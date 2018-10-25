@@ -152,9 +152,11 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	/** Resolver to use for checking if a bean definition is an autowire candidate */
 	private AutowireCandidateResolver autowireCandidateResolver = new SimpleAutowireCandidateResolver();
 
+	// 存储修正过的依赖映射关系
 	/** Map from dependency type to corresponding autowired value */
 	private final Map<Class<?>, Object> resolvableDependencies = new ConcurrentHashMap<>(16);
 
+	// 存储Bean名称-->Bean定义映射关系
 	/** Map of bean definition objects, keyed by bean name */
 	private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
 
@@ -164,6 +166,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	/** Map of singleton-only bean names, keyed by dependency type */
 	private final Map<Class<?>, String[]> singletonBeanNamesByType = new ConcurrentHashMap<>(64);
 
+	// 存储Bean定义名称列表
 	/** List of bean definition names, in registration order */
 	private volatile List<String> beanDefinitionNames = new ArrayList<>(256);
 
@@ -723,6 +726,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		return (this.configurationFrozen || super.isBeanEligibleForMetadataCaching(beanName));
 	}
 
+	// 初始化所有的单例Bean
 	@Override
 	public void preInstantiateSingletons() throws BeansException {
 		if (this.logger.isDebugEnabled()) {
@@ -731,11 +735,21 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		// Iterate over a copy to allow for init methods which in turn register new bean definitions.
 		// While this may not be part of the regular factory bootstrap, it does otherwise work fine.
-		List<String> beanNames = new ArrayList<>(this.beanDefinitionNames);
+		List<String> beanNames = new ArrayList<>(this.beanDefinitionNames); // beanDefinitionNames 存储bean定义名称列表
 
 		// Trigger initialization of all non-lazy singleton beans...
 		for (String beanName : beanNames) {
+			/**
+			 * 	getMergedLocalBeanDefiniation方法的含义:
+			 * 		Bean定义公共的抽象类是AbstractBeanDefinition,普通的Bean在Spring加载Bean定义的时候,实例化出来的是GenericBeanDefinition,
+			 * 		而Spring上下文包括实例化所有Bean用的AbstractBeanDefinition是RootBeanDefinition,这时候就使用getMergedLocalDefinition方
+			 * 		法做一次转化,将非RootBeanDefinition转换成RootBeanDefinition以供后续操作.	
+			 */
 			RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
+			/**
+			 * 由于getMergedLocalBeanDefinition方法实例化的是所有非懒加载的单例Bean,因此要实例化Bean必须满足以下三个条件
+			 * 		(1)不是抽象的	(2)必须是单例的	  (3)必须是非懒加载的
+			 */
 			if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
 				if (isFactoryBean(beanName)) {
 					Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
@@ -748,6 +762,13 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 									getAccessControlContext());
 						}
 						else {
+							/**
+							 * 假如Bean是SmartFactoryBean的实现并且eagerInit并且eagerInit(渴望加载..)会立即实例化这个Bean.
+							 * SmartFactoryBean基本不会用到,Spring官网对于SmartFactoryBean定义描述:
+							 * 		* FactoryBean接口的扩展接口.接口实现并不表示是否总是返回单独的实例对象,比如FactoryBean.isSingleton()实现返回false的情况并不清晰的表示每次返回的都是单独的实例对象.
+							 * 		* 不实现这个接口的简单FactoryBean的实现,FactoryBean.isSingleton()实现返回false总是简单的告诉我们每次返回的都是独立的实例对象,暴露出来的对象只能通过命令访问
+							 * 		* 注意:这个而接口是有一个特殊用途的接口,主要用于框架内部使用与Spring相关.通常,应用提供的FactoryBean接口实现应当只需要实现简单的FactoryBean接口即可,新方法应当加入到扩展接口中去	
+							 */
 							isEagerInit = (factory instanceof SmartFactoryBean &&
 									((SmartFactoryBean<?>) factory).isEagerInit());
 						}

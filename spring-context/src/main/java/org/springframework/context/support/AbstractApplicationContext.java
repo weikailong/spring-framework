@@ -186,6 +186,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	/** Flag that indicates whether this context has been closed already */
 	private final AtomicBoolean closed = new AtomicBoolean();
 
+	// refesh方法和destory方法共用的一个监视器,避免两个方法同时执行
 	/** Synchronization monitor for the "refresh" and "destroy" */
 	private final Object startupShutdownMonitor = new Object();
 
@@ -514,10 +515,25 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 	@Override
 	public void refresh() throws BeansException, IllegalStateException {
+		
+		/**
+		 * 	1.方法是加锁的,这么做的原因是避免多个线程同时刷新Spring上下文
+		 * 	2.尽管加锁可以看到是针对整个方法体的,但是没有在方法前加synchronized关键字,而使用了对象锁startupShutdownMonitor,这样做的好处:
+		 * 		(1)refresh()方法和close()方法都使用了startupShutdownMonitor对象加锁,这就保证了在调用refresh()方法的时候无法调用close()方法,反而亦然,避免了冲突
+		 * 		(2)使用对象锁可以减小同步的范围,只对不能并发的代码块进行加锁,提高了整体代码运行的效率
+		 * 	3.方法里面使用了每个子方法定义了整个refresh()方法的流程,是的整个方法流程清晰易懂.这方值得学习.
+		 * 		方法太大的缺点:
+		 * 			(1)扩展性降低.反过来讲,假设把流程定义为方法,子类可以继承父类,可以根据需要重写方法
+		 * 			(2)代码可读性差.
+		 * 			(3)代码可维护性差.	
+		 */
+		// 加锁;
+		// startupShutdownMonitor是refresh方法和destory方法共用的一个监视器,避免两个方法同时执行
 		synchronized (this.startupShutdownMonitor) {
 			// Prepare this context for refreshing.
 			prepareRefresh();
 
+			// obtainFreshBeanFactory方法的作用是获取刷新Spring上下文的Bean工厂
 			// Tell the subclass to refresh the internal bean factory.
 			ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
@@ -546,6 +562,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				// Check for listener beans and register them.
 				registerListeners();
 
+				// 完成对于所有非懒加载的Bean的初始化
 				// Instantiate all remaining (non-lazy-init) singletons.
 				finishBeanFactoryInitialization(beanFactory);
 
@@ -582,11 +599,15 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * active flag as well as performing any initialization of property sources.
 	 */
 	protected void prepareRefresh() {
+		// 设置刷新Spring上下文的开始时间
 		this.startupDate = System.currentTimeMillis();
+		// 将closed标志设置为false
 		this.closed.set(false);
+		// 将active标志设置为true
 		this.active.set(true);
 
 		if (logger.isInfoEnabled()) {
+			// 这句日志打印了真正加载Spring上下文的java类
 			logger.info("Refreshing " + this);
 		}
 
@@ -618,6 +639,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * @see #getBeanFactory()
 	 */
 	protected ConfigurableListableBeanFactory obtainFreshBeanFactory() {
+		// 一个抽象方法
 		refreshBeanFactory();
 		ConfigurableListableBeanFactory beanFactory = getBeanFactory();
 		if (logger.isDebugEnabled()) {

@@ -51,6 +51,7 @@ import org.springframework.util.Assert;
  */
 public class ClassPathXmlApplicationContext extends AbstractXmlApplicationContext {
 
+	// 配置文件资源对象数组
 	@Nullable
 	private Resource[] configResources;
 
@@ -78,7 +79,7 @@ public class ClassPathXmlApplicationContext extends AbstractXmlApplicationContex
 	/**
 	 * Create a new ClassPathXmlApplicationContext, loading the definitions
 	 * from the given XML file and automatically refreshing the context.
-	 * @param configLocation resource location
+	 * @param configLocation resource location 配置文件字符串数组,存储配置文件路径
 	 * @throws BeansException if context creation failed
 	 */
 	public ClassPathXmlApplicationContext(String configLocation) throws BeansException {
@@ -138,9 +139,16 @@ public class ClassPathXmlApplicationContext extends AbstractXmlApplicationContex
 			String[] configLocations, boolean refresh, @Nullable ApplicationContext parent)
 			throws BeansException {
 
+		// 没什么太大的作用,设置一下父级ApplicationContext,这里是null
 		super(parent);
+		// 1.将指定的Spring配置文件的路径存储到本地
+		// 2.解析Spring配置文件路径中${PlaceHolder}占位符,替换为系统变量中PlaceHolder对应的Value值,System本身就自带一些系统变量比如class.path,os.name,user.dir等
+		//   也可以通过System.setProperty()方法设置自己需要的系统变量
 		setConfigLocations(configLocations);
 		if (refresh) {
+			// 整个SpringBean加载的核心,它是ClassPathXmlApplicationContext的父类AbstractApplicationContext的一个方法,
+			// 用于刷新整个Spring上下文信息,定义了整个Spring上下文加载的流程
+			// 典型模板模式
 			refresh();
 		}
 	}
