@@ -150,6 +150,15 @@ public class ClassPathXmlApplicationContext extends AbstractXmlApplicationContex
 			// 用于刷新整个Spring上下文信息,定义了整个Spring上下文加载的流程
 			// 典型模板模式
 			refresh();
+
+			/**
+			 * 流程总结:
+			 * 		初始化Bean开始 --> 反射调用Bean的构造方法实例化Bean --> 通过反射注入Bean的属性值 
+			 * 		--> Aware注入,比如BeanNameAware,BeanClassLoaderAware --> 调用每个调用BeanPostProcessor接口的postProcessBeforeInitialization方法
+			 * 		--> 调用初始化方法 --> 调用每个调用BeanPostProcessor接口的postProcessAfterInitialization方法
+			 * 		--> 注册需要执行销毁的方法的Bean --> 初始化Bean结束
+			 */
+
 		}
 	}
 

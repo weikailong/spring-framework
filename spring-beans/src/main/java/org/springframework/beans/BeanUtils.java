@@ -165,7 +165,9 @@ public abstract class BeanUtils {
 	public static <T> T instantiateClass(Constructor<T> ctor, Object... args) throws BeanInstantiationException {
 		Assert.notNull(ctor, "Constructor must not be null");
 		try {
+			// 即使Bean的构造函数是private,protected的,依然不影响Bean的构造
 			ReflectionUtils.makeAccessible(ctor);
+			// 通过反射生成Bean的实例.被实例化出来的Bean并不会直接返回,而是会被包装为BeanWrapper继续在后台使用.
 			return (KotlinDetector.isKotlinType(ctor.getDeclaringClass()) ?
 					KotlinDelegate.instantiateClass(ctor, args) : ctor.newInstance(args));
 		}

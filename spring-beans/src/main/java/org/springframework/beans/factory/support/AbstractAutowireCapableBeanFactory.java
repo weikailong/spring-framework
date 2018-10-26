@@ -420,6 +420,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	public Object applyBeanPostProcessorsBeforeInitialization(Object existingBean, String beanName)
 			throws BeansException {
 
+		// 遍历每个BeanProcesser接口实现,调用postProcessBeforeInitialization方法
 		Object result = existingBean;
 		for (BeanPostProcessor beanProcessor : getBeanPostProcessors()) {
 			Object current = beanProcessor.postProcessBeforeInitialization(result, beanName);
@@ -435,6 +436,11 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	public Object applyBeanPostProcessorsAfterInitialization(Object existingBean, String beanName)
 			throws BeansException {
 
+		// 遍历BeanPostProcessor,调用postProcessAfterInitialization方法.
+		//	对于BeanPostProcessor方法总结如下:
+		//		1.在初始化每一个Bean的时候都会调用每一个配置的BeanPostProcesser的方法
+		// 		2.在Bean属性设置,Aware设置后调用postProcessBeforeInitialization方法
+		//		3.在初始化方法调用后调用postProcessAfterInitialization方法
 		Object result = existingBean;
 		for (BeanPostProcessor beanProcessor : getBeanPostProcessors()) {
 			Object current = beanProcessor.postProcessAfterInitialization(result, beanName);
@@ -541,6 +547,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			instanceWrapper = this.factoryBeanInstanceCache.remove(beanName);
 		}
 		if (instanceWrapper == null) {
+			// 创建出Bean的实例,并包装为BeanWrapper
 			instanceWrapper = createBeanInstance(beanName, mbd, args);
 		}
 		final Object bean = instanceWrapper.getWrappedInstance();
@@ -578,7 +585,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// Initialize the bean instance.
 		Object exposedObject = bean;
 		try {
+			// 属性注入. 填充Bean
 			populateBean(beanName, mbd, instanceWrapper);
+			// Aware注入
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
 		}
 		catch (Throwable ex) {
@@ -620,6 +629,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		// Register bean as disposable.
 		try {
+			// 注册需要执行销毁方法的Bean
 			registerDisposableBeanIfNecessary(beanName, bean, mbd);
 		}
 		catch (BeanDefinitionValidationException ex) {
@@ -1126,6 +1136,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 
+		// bean标签使用构造函数注入属性的话,执行autowireConstructor方法,否则执行instantiateBean方法
 		// Need to determine the constructor...
 		Constructor<?>[] ctors = determineConstructorsFromBeanPostProcessors(beanClass, beanName);
 		if (ctors != null ||
@@ -1599,6 +1610,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 		BeanDefinitionValueResolver valueResolver = new BeanDefinitionValueResolver(this, beanName, mbd, converter);
 
+		// pvs的实现类为mutablePropertyValues,里面持有一个List<PropertyValue>,每一个PropertyValue包含了此Bean属性的属性名与属性值.
+		// 做了一次深拷贝.(其实就是遍历PropertyValue然后一个一个复制到一个新的List而不是Java语义上的Clone,这是使用深拷贝是为了解析Values值中的所有引用)
+		// 将PropertyValue一个一个复制到一个新的List里面去,起名deepCopy.
 		// Create a deep copy, resolving any references for values.
 		List<PropertyValue> deepCopy = new ArrayList<>(original.size());
 		boolean resolveNecessary = false;
@@ -1642,6 +1656,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		// Set our (possibly massaged) deep copy.
 		try {
+			// 最后执行这句进行复制,bw即BeanWrapper,持有Bean实例的一个Bean包装类
 			bw.setPropertyValues(new MutablePropertyValues(deepCopy));
 		}
 		catch (BeansException ex) {
@@ -1688,6 +1703,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	protected Object initializeBean(final String beanName, final Object bean, @Nullable RootBeanDefinition mbd) {
 		if (System.getSecurityManager() != null) {
 			AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+				// 注入对应的属性值
 				invokeAwareMethods(beanName, bean);
 				return null;
 			}, getAccessControlContext());
@@ -1702,6 +1718,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		try {
+			// 调用Bean的初始化方法
 			invokeInitMethods(beanName, wrappedBean, mbd);
 		}
 		catch (Throwable ex) {
@@ -1719,15 +1736,18 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	private void invokeAwareMethods(final String beanName, final Object bean) {
 		if (bean instanceof Aware) {
 			if (bean instanceof BeanNameAware) {
+				// 如果bean是BeanNameAware接口的实现类会调用setBeanName方法.
 				((BeanNameAware) bean).setBeanName(beanName);
 			}
 			if (bean instanceof BeanClassLoaderAware) {
 				ClassLoader bcl = getBeanClassLoader();
 				if (bcl != null) {
+					// 如果bean是BeanClassLoaderAware接口的实现类会调用setBeanCalssLoader方法
 					((BeanClassLoaderAware) bean).setBeanClassLoader(bcl);
 				}
 			}
 			if (bean instanceof BeanFactoryAware) {
+				// 如果是BeanFactoryAware接口的实现类会调用setBeanFactory方法,注入对应的属性值.
 				((BeanFactoryAware) bean).setBeanFactory(AbstractAutowireCapableBeanFactory.this);
 			}
 		}
@@ -1748,6 +1768,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	protected void invokeInitMethods(String beanName, final Object bean, @Nullable RootBeanDefinition mbd)
 			throws Throwable {
 
+		// 1.判断Bean是否是InitializingBean的实现类,如果是,则将Bean强转为InitializingBean,直接调用afterPropertiesSet()方法
 		boolean isInitializingBean = (bean instanceof InitializingBean);
 		if (isInitializingBean && (mbd == null || !mbd.isExternallyManagedInitMethod("afterPropertiesSet"))) {
 			if (logger.isDebugEnabled()) {
@@ -1768,7 +1789,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				((InitializingBean) bean).afterPropertiesSet();
 			}
 		}
-
+	
+		// 2.尝试去拿init-method,加入有的话,通过反射,调用initMethod
 		if (mbd != null && bean.getClass() != NullBean.class) {
 			String initMethodName = mbd.getInitMethodName();
 			if (StringUtils.hasLength(initMethodName) &&
@@ -1777,6 +1799,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				invokeCustomInitMethod(beanName, bean, mbd);
 			}
 		}
+		// 后记:两种方法各有优劣:使用实现InitializingBean接口的方式效率更高一点,因为init-method方法是通过反射进行调用的.
+		// 从另一个角度讲,使用init-method方法之后和Spring的耦合度会更低一点.具体使用哪种方式调用初始化方法,看个人喜好.
 	}
 
 	/**

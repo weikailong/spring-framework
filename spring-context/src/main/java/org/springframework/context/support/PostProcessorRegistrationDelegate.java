@@ -56,6 +56,7 @@ class PostProcessorRegistrationDelegate {
 		// Invoke BeanDefinitionRegistryPostProcessors first, if any.
 		Set<String> processedBeans = new HashSet<>();
 
+		// 我们使用的是DefaultListableBeanFactory,是BeanDefinitionRegistry的子类
 		if (beanFactory instanceof BeanDefinitionRegistry) {
 			BeanDefinitionRegistry registry = (BeanDefinitionRegistry) beanFactory;
 			List<BeanFactoryPostProcessor> regularPostProcessors = new LinkedList<>();
@@ -136,11 +137,20 @@ class PostProcessorRegistrationDelegate {
 
 		// Do not initialize FactoryBeans here: We need to leave all regular beans
 		// uninitialized to let the bean factory post-processors apply to them!
+		// 获取beanDefinitionMap中的Bean,即用户自定义的Bean
 		String[] postProcessorNames =
 				beanFactory.getBeanNamesForType(BeanFactoryPostProcessor.class, true, false);
 
 		// Separate between BeanFactoryPostProcessors that implement PriorityOrdered,
 		// Ordered, and the rest.
+		/**
+		 * 	这里分出了三个List,表示开发者可以自定义BeanFactoryProcessor的调用顺序,具体调用顺序为:
+		 * 		* 如果BeanFactoryPostProcessor实现了PriorityOrdered接口(PriorityOrderd接口是Ordered的子接口,没有自己的接口方法定义,只是做一个标记
+		 * 		  表示调用优先级高于Ordered接口的子接口).是优先级最高的调用,调用顺序是按照接口方法getOrder()的实现,对于返回的int值从小到大进行排序,进行调用.
+		 * 		* 如果BeanFactoryPostProcessor实现了Ordered接口,是优先级次高的调用,将在所有实现PriorityOrdered接口的BeanFactoryPostProcessor调用完毕之后,
+		 * 	 	  依据getOrder()√先对返回的int值从小到大排序,进行调用
+		 * 	 	* 不实现Ordered接口的BeanFactoryPostProcessor在上面的BeanFactoryPostProcessor调用完毕之后进行调用,调用顺序就是Bean定义的顺序.
+		 */
 		List<BeanFactoryPostProcessor> priorityOrderedPostProcessors = new ArrayList<>();
 		List<String> orderedPostProcessorNames = new ArrayList<>();
 		List<String> nonOrderedPostProcessorNames = new ArrayList<>();
@@ -159,6 +169,7 @@ class PostProcessorRegistrationDelegate {
 			}
 		}
 
+		// 按照上面的规则依次先将BeanFactoryProcessor接口对应的实现类实例化出来并调用postProcessBeanFactory方法
 		// First, invoke the BeanFactoryPostProcessors that implement PriorityOrdered.
 		sortPostProcessors(priorityOrderedPostProcessors, beanFactory);
 		invokeBeanFactoryPostProcessors(priorityOrderedPostProcessors, beanFactory);
@@ -183,6 +194,16 @@ class PostProcessorRegistrationDelegate {
 		beanFactory.clearMetadataCache();
 	}
 
+	/**
+	 *  整体代码思路和invokeBeanFactoryPostProcessors方法类似,但是这里不会调用BeanPostProcessor接口的方法,
+	 *  而是把每一个BeanPostProcessor接口实例化出来并按照顺序放入一个List中,到时候按顺序调用.
+	 *  
+	 *  具体代码思路可以参考invokeBeanFactoryPostProcessors,这里就根据代码总结一下BeanPostProcessor接口的调用顺序:
+	 *  	* 优先调用PriorityOrdered接口的子接口,调用顺序依照接口方法getOrder的返回值从小到大的调用排序
+	 *  	* 其次调用Ordered接口的子接口,调用顺序依照接口方法getOrder的返回值从小到大排序
+	 *  	* 接着按照BeanPostProcessor实现类在配置文件中定义的顺序进行调用
+	 *  	* 最后调用MergedBeanDefinitionPostProcessor接口的实现Bean,同样按照在配置文件中定义的顺序进行调用	
+	 */
 	public static void registerBeanPostProcessors(
 			ConfigurableListableBeanFactory beanFactory, AbstractApplicationContext applicationContext) {
 

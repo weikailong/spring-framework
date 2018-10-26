@@ -243,10 +243,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	@SuppressWarnings("unchecked")
 	protected <T> T doGetBean(final String name, @Nullable final Class<T> requiredType,
 			@Nullable final Object[] args, boolean typeCheckOnly) throws BeansException {
-		// TODO 隗凯隆
+		
 		final String beanName = transformedBeanName(name);
 		Object bean;
-
+		// 首先检查本地的单例缓存是否已经加载Bean,没有的话检查earlySingleton缓存是否已经加载过Bean,没有的话执行后面的逻辑
 		// Eagerly check singleton cache for manually registered singletons.
 		Object sharedInstance = getSingleton(beanName);
 		if (sharedInstance != null && args == null) {
@@ -263,6 +263,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		}
 
 		else {
+			/**
+			 * 执行一些基本的检查和简单的操作,包括bean是否为prototype的(prototype的bean当前创建会抛出异常),是否抽象的,将beanName加入alreadyCreated这个Set中等
+			 */
 			// Fail if we're already creating this bean instance:
 			// We're assumably within a circular reference.
 			if (isPrototypeCurrentlyInCreation(beanName)) {
@@ -296,6 +299,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				final RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
 				checkMergedBeanDefinition(mbd, beanName, args);
 
+				/**
+				 * 我们经常在bean标签中看到depends-on属性,就是通过这段保证了depends-on依赖的的Bean会优先于当前Bean被加载
+				 */
 				// Guarantee initialization of beans that the current bean depends on.
 				String[] dependsOn = mbd.getDependsOn();
 				if (dependsOn != null) {
@@ -1673,6 +1679,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @see org.springframework.beans.factory.config.DestructionAwareBeanPostProcessor
 	 */
 	protected boolean requiresDestruction(Object bean, RootBeanDefinition mbd) {
+		// 要注销方法,Bean需要至少满足以下三个条件之一:
+		//	1.Bean是DisposableBena的实现类,此时执行DisposableBean的接口方法destroy()
+		//	2.Bean标签中有配置destroy-method属性,此时执行destroy-method配置指定的方法
+		//	3.当前Bean对应的BeanFactory中持有DestructionAwareBeanPostProcessor接口的实现类,此时执行DestructionAwareBeanPostProcessor的接口方法postProcessBeforeDestruction
 		return (bean.getClass() != NullBean.class &&
 				(DisposableBeanAdapter.hasDestroyMethod(bean, mbd) || (hasDestructionAwareBeanPostProcessors() &&
 						DisposableBeanAdapter.hasApplicableProcessors(bean, getBeanPostProcessors()))));
@@ -1692,11 +1702,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 */
 	protected void registerDisposableBeanIfNecessary(String beanName, Object bean, RootBeanDefinition mbd) {
 		AccessControlContext acc = (System.getSecurityManager() != null ? getAccessControlContext() : null);
+		// 第一个判断为 必须不是prototype(原型)的
 		if (!mbd.isPrototype() && requiresDestruction(bean, mbd)) {
 			if (mbd.isSingleton()) {
 				// Register a DisposableBean implementation that performs all destruction
 				// work for the given bean: DestructionAwareBeanPostProcessors,
 				// DisposableBean interface, custom destroy method.
+				// 满足条件后,容器便会注册销毁该Bean.容器销毁的时候, 会遍历disposableBeans,逐一执行销毁方法
 				registerDisposableBean(beanName,
 						new DisposableBeanAdapter(bean, beanName, mbd, getBeanPostProcessors(), acc));
 			}

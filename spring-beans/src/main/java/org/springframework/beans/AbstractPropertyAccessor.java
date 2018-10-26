@@ -89,6 +89,7 @@ public abstract class AbstractPropertyAccessor extends TypeConverterSupport impl
 		List<PropertyAccessException> propertyAccessExceptions = null;
 		List<PropertyValue> propertyValues = (pvs instanceof MutablePropertyValues ?
 				((MutablePropertyValues) pvs).getPropertyValueList() : Arrays.asList(pvs.getPropertyValues()));
+		// 遍历前面的deepCopy,拿每一个PropertyValue,执行第98行的setPropertyValue
 		for (PropertyValue pv : propertyValues) {
 			try {
 				// This method may throw any BeansException, which won't be caught

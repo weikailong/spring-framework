@@ -259,6 +259,7 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 				throw new NotWritablePropertyException(getRootClass(), this.nestedPath + propertyName,
 						"Nested property in path '" + propertyName + "' does not exist", ex);
 			}
+			// 找到一个合适的BeanWrapper然后执行
 			tokens = getPropertyNameTokens(getFinalPath(nestedPa, propertyName));
 			if (nestedPa == this) {
 				pv.getOriginalPropertyValue().resolvedTokens = tokens;

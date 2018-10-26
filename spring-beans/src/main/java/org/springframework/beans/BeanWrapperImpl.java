@@ -309,6 +309,10 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 			}
 		}
 
+		/**
+		 *	1.拿到写方法并将方法的可见性设置为true
+		 *	2.拿到Value值,对Bean通过反射调用写方法	
+		 */
 		@Override
 		public void setValue(final @Nullable Object value) throws Exception {
 			final Method writeMethod = (this.pd instanceof GenericTypeAwarePropertyDescriptor ?
