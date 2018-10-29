@@ -103,6 +103,12 @@ class ConfigBeanDefinitionParser implements BeanDefinitionParser {
 				new CompositeComponentDefinition(element.getTagName(), parserContext.extractSource(element));
 		parserContext.pushContainingComponent(compositeDef);
 
+		/**
+		 * configAutoProxyCreator方法的作用:
+		 * 		* 向Spring容器注册了一个BeanName为org.springframework.aop.config.internalAutoProxyCreator的Bean定义,可以自定义也可以使用Spring提供的(根据优先级来)
+		 * 		* Spring默认提供的是org.springframework.aop.aspectj.autoProxy.AspectJAwareAdvisorAutoProxyCreator,这个类是AOP的核心类.
+		 * 		* 在这个方法里面也会根据配置proxy-target-class和expose-proxy,设置是否使用CGLIB进行代理以及是否暴露最终的代理	
+		 */
 		configureAutoProxyCreator(parserContext, element);
 
 		List<Element> childElts = DomUtils.getChildElements(element);
@@ -216,6 +222,8 @@ class ConfigBeanDefinitionParser implements BeanDefinitionParser {
 			boolean adviceFoundAlready = false;
 			for (int i = 0; i < nodeList.getLength(); i++) {
 				Node node = nodeList.item(i);
+				// 通过isAdviceNode可知,这个for循环只用来处理<aop:aspect>标签下的<aop:before>,<aop:after>,<aop:after-returning>,<aop:after-throwing method="">,
+				// <aop:around method="">这五个标签
 				if (isAdviceNode(node, parserContext)) {
 					if (!adviceFoundAlready) {
 						adviceFoundAlready = true;
@@ -233,10 +241,12 @@ class ConfigBeanDefinitionParser implements BeanDefinitionParser {
 				}
 			}
 
+			// 构建一个Aspect标签组件定义,并将Aspect标签组件定义推到ParseContext即解析工具上下文中.
 			AspectComponentDefinition aspectComponentDefinition = createAspectComponentDefinition(
 					aspectElement, aspectId, beanDefinitions, beanReferences, parserContext);
 			parserContext.pushContainingComponent(aspectComponentDefinition);
 
+			// 拿到所有的<aop:aspect>下的pointcut标签,进行遍历
 			List<Element> pointcuts = DomUtils.getChildElementsByTagName(aspectElement, POINTCUT);
 			for (Element pointcutElement : pointcuts) {
 				parsePointcut(pointcutElement, parserContext);
@@ -316,6 +326,12 @@ class ConfigBeanDefinitionParser implements BeanDefinitionParser {
 			String aspectName, int order, Element aspectElement, Element adviceElement, ParserContext parserContext,
 			List<BeanDefinition> beanDefinitions, List<BeanReference> beanReferences) {
 
+		/**
+		 * 	1.根据织入方式(before,after这些)创建RootBeanDefinition,名为adviceDef即advice定义
+		 * 	2.将上一步创建的RootBeanDefinition写入一个新的RootBeanDefinition,构造一个新的对象,名为advisorDefinition,即advisor定义
+		 * 	3.将advisorDefinition注册到DefaultListableBeanFactory中
+		 */
+		
 		try {
 			this.parseState.push(new AdviceEntry(parserContext.getDelegate().getLocalName(adviceElement)));
 
@@ -337,15 +353,18 @@ class ConfigBeanDefinitionParser implements BeanDefinitionParser {
 					beanDefinitions, beanReferences);
 
 			// configure the advisor
+			// 将上一步生成的RootBeanDefinition包装了一下,new一个新的RootBeanDefinition出来,Class类型是org.springframework.aop.aspectj.AspectJPointcutAdvisor
 			RootBeanDefinition advisorDefinition = new RootBeanDefinition(AspectJPointcutAdvisor.class);
 			advisorDefinition.setSource(parserContext.extractSource(adviceElement));
 			advisorDefinition.getConstructorArgumentValues().addGenericArgumentValue(adviceDef);
+			// 判断<aop:aspect>标签中有没有"order"属性,有就设置一下,"order"属性是用来控制切入方法优先级的
 			if (aspectElement.hasAttribute(ORDER_PROPERTY)) {
 				advisorDefinition.getPropertyValues().add(
 						ORDER_PROPERTY, aspectElement.getAttribute(ORDER_PROPERTY));
 			}
 
 			// register the final advisor
+			// 将BeanDefinition注册到DefaultListableBeanFactory中
 			parserContext.getReaderContext().registerWithGeneratedName(advisorDefinition);
 
 			return advisorDefinition;
@@ -409,6 +428,7 @@ class ConfigBeanDefinitionParser implements BeanDefinitionParser {
 	 */
 	private Class<?> getAdviceClass(Element adviceElement, ParserContext parserContext) {
 		String elementName = parserContext.getDelegate().getLocalName(adviceElement);
+		// 创建Bean定义,必然该Bean定义中要对应一个具体的Class,不同的切入点对应不同的Class:
 		if (BEFORE.equals(elementName)) {
 			return AspectJMethodBeforeAdvice.class;
 		}
@@ -434,28 +454,40 @@ class ConfigBeanDefinitionParser implements BeanDefinitionParser {
 	 * Pointcut with the BeanDefinitionRegistry.
 	 */
 	private AbstractBeanDefinition parsePointcut(Element pointcutElement, ParserContext parserContext) {
+		// 获取<aop:pointcut>标签下的"id"属性和"expression"属性
 		String id = pointcutElement.getAttribute(ID);
 		String expression = pointcutElement.getAttribute(EXPRESSION);
 
 		AbstractBeanDefinition pointcutDefinition = null;
 
 		try {
+			// 推送一个PointcutEntry,表示当前Spring上下文正在解析Pointcut标签
 			this.parseState.push(new PointcutEntry(id));
+			// 创建Pointcut的Bean定义
 			pointcutDefinition = createPointcutDefinition(expression);
+			// 最终从NullSourceExtractor的extractSource方法获取Source,就是个null
 			pointcutDefinition.setSource(parserContext.extractSource(pointcutElement));
 
+			/**
+			 * 	注册获取到的Bean定义.默认pointcutBeanName为<aop:pointcut>标签中定义的id属性:
+			 */
 			String pointcutBeanName = id;
 			if (StringUtils.hasText(pointcutBeanName)) {
+				// 如果<aop:pointcut>标签中配置了id属性，pointcutBeanName=id
 				parserContext.getRegistry().registerBeanDefinition(pointcutBeanName, pointcutDefinition);
 			}
 			else {
+				// 如果<aop:pointcut>标签中没有配置id属性.和Bean不配置id属性一样的规则
+				// pointcutBeanName=org.springframework.aop.aspectj.AspectJExpressionPointcut#序号 (从0开始累积)
 				pointcutBeanName = parserContext.getReaderContext().registerWithGeneratedName(pointcutDefinition);
 			}
 
+			// 向解析工具上下文中注册一个Pointcut组件定义
 			parserContext.registerComponent(
 					new PointcutComponentDefinition(pointcutBeanName, pointcutDefinition, expression));
 		}
 		finally {
+			// finally块在<aop:pointcut>标签解析完毕后,让之前推送至栈顶的PointcutEntry出栈,表示此次<aop:pointcut>标签解析完毕
 			this.parseState.pop();
 		}
 
@@ -505,6 +537,10 @@ class ConfigBeanDefinitionParser implements BeanDefinitionParser {
 	 * the supplied pointcut expression.
 	 */
 	protected AbstractBeanDefinition createPointcutDefinition(String expression) {
+		/**
+		 * 	1.<aop:pointcut>标签对应解析出来是RootBeanDefinition,且RootBeanDefinition的Class是org.springframework.aop.aspectj.AspectJExpressionPointcut
+		 * 	2.<aop:pointcut>标签对应的Bean是prototype即原型的
+		 */
 		RootBeanDefinition beanDefinition = new RootBeanDefinition(AspectJExpressionPointcut.class);
 		beanDefinition.setScope(BeanDefinition.SCOPE_PROTOTYPE);
 		beanDefinition.setSynthetic(true);

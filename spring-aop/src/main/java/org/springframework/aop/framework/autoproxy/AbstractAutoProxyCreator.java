@@ -349,9 +349,11 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		}
 
 		// Create proxy if we have advice.
+		// 根据一套规则判断Bean是不是需要生成代理,这套规则就是getAdvicesAndAdvisorsForBean
 		Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
 		if (specificInterceptors != DO_NOT_PROXY) {
 			this.advisedBeans.put(cacheKey, Boolean.TRUE);
+			// 为<bean>创建代理
 			Object proxy = createProxy(
 					bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean));
 			this.proxyTypes.put(cacheKey, proxy.getClass());
@@ -448,14 +450,17 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 			AutoProxyUtils.exposeTargetClass((ConfigurableListableBeanFactory) this.beanFactory, beanName, beanClass);
 		}
 
+		// new除了一个代理工厂,提供了简单的方式使用代码获取和配置AOP代理
 		ProxyFactory proxyFactory = new ProxyFactory();
 		proxyFactory.copyFrom(this);
 
+		// 判断<aop:config>这个节点中proxy-target-class="false"或者proxy-target-class不配置,即不使用CGLIB生成代理.
 		if (!proxyFactory.isProxyTargetClass()) {
 			if (shouldProxyTargetClass(beanClass, beanName)) {
 				proxyFactory.setProxyTargetClass(true);
 			}
 			else {
+				// 获取当前Bean实现的所有接口,将这些接口Class对象都添加到ProxyFactory中
 				evaluateProxyInterfaces(beanClass, proxyFactory);
 			}
 		}
@@ -469,7 +474,8 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		if (advisorsPreFiltered()) {
 			proxyFactory.setPreFiltered(true);
 		}
-
+		// 1.创建AopProxy接口实现类
+		// 2.通过AopProxy接口的实现类的getProxy方法获取<bean>对应的代理
 		return proxyFactory.getProxy(getProxyClassLoader());
 	}
 
