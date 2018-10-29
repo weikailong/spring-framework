@@ -1388,11 +1388,14 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	protected void autowireByName(
 			String beanName, AbstractBeanDefinition mbd, BeanWrapper bw, MutablePropertyValues pvs) {
 
+		// 找到Bean中不是简单属性的属性,也就是找到属性是对象属性的属性,但也不是所有的对象类型都会被找到,比如:CharSequence类型,Number类型,Date类型,URL类型,URI类型,Locale类型,Class类型就会忽略.
 		String[] propertyNames = unsatisfiedNonSimpleProperties(mbd, bw);
+		// 遍历所有找到的属性,如果bean定义中包含了属性名,那么先实例化改属性名对应的bean
 		for (String propertyName : propertyNames) {
 			if (containsBean(propertyName)) {
 				Object bean = getBean(propertyName);
 				pvs.add(propertyName, bean);
+				// 注册一下当前bean的依赖bean,用于在某个bean被销毁钱先将其依赖的bean销毁
 				registerDependentBean(propertyName, beanName);
 				if (logger.isDebugEnabled()) {
 					logger.debug("Added autowiring by name from bean name '" + beanName +
@@ -1428,12 +1431,16 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		Set<String> autowiredBeanNames = new LinkedHashSet<>(4);
+		// 找到Bean中属性是对象类型的属性
 		String[] propertyNames = unsatisfiedNonSimpleProperties(mbd, bw);
+		// 遍历一下PropertyName获取PropertyName对应的属性描述
 		for (String propertyName : propertyNames) {
 			try {
 				PropertyDescriptor pd = bw.getPropertyDescriptor(propertyName);
 				// Don't try autowiring by type for type Object: never makes sense,
 				// even if it technically is a unsatisfied, non-simple property.
+				// 不要尝试自动装配Object类型,这没有任何意义
+				// 即使从技术角度看他是一个车非简单的对象属性
 				if (Object.class != pd.getPropertyType()) {
 					MethodParameter methodParam = BeanUtils.getWriteMethodParameter(pd);
 					// Do not allow eager init for type matching in case of a prioritized post-processor.
