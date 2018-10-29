@@ -172,9 +172,11 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 				if (node instanceof Element) {
 					Element ele = (Element) node;
 					if (delegate.isDefaultNamespace(ele)) {
+						// 正常来说,遇到<bean id="daoImpl"...>,<bean id="timeHandler"...>这两个标签的时候,都会执行第9行代码,因为<bean>标签是默认的Namespace.
 						parseDefaultElement(ele, delegate);
 					}
 					else {
+						// 但是在遇到<aop:config>标签的时候会执行这句,<aop:config>并不是默认的Namespace
 						delegate.parseCustomElement(ele);
 					}
 				}

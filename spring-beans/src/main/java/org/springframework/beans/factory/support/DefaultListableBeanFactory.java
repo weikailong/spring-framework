@@ -1119,6 +1119,14 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				return multipleBeans;
 			}
 
+			// 获取自动装配的候选者
+			/**
+			 * 	如果拿到Map是空的且属性必须注入,抛异常
+			 * 	如果拿到的Map中有多个候选对象,判断其中是否有<bean>中属性配置为"primary=true"的,..
+			 * 	如有拿到的Map中只有一个候选对象,直接拿那个
+			 * 	
+			 * 	所有的带注入的PropertyName-->PropertyValue映射拿到之后都只是放在MutablePropertyValues中,最后由AbstractPropertyAccessor类的setPropertyValues方法遍历并进行逐一注入
+			 */
 			Map<String, Object> matchingBeans = findAutowireCandidates(beanName, type, descriptor);
 			if (matchingBeans.isEmpty()) {
 				if (isRequired(descriptor)) {
@@ -1294,9 +1302,12 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	protected Map<String, Object> findAutowireCandidates(
 			@Nullable String beanName, Class<?> requiredType, DependencyDescriptor descriptor) {
 
+		 // 首先获取后选择bean名称,通过DefaultListabelBeanFactory的getBeanNamesForType方法,即找一下所有的Bean定义中指定Type的实现类或者子类
 		String[] candidateNames = BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
 				this, requiredType, true, descriptor.isEager());
+		// 拿到所有待装配对象的实现类或者子类的候选者,组成一个Map,Key为beanName,Value为具体的Bean.
 		Map<String, Object> result = new LinkedHashMap<>(candidateNames.length);
+		// 判断要自动装配的类型是不是要自动装配的纠正类型.(如果自动装配的类型是纠正类型,比如是一个ResourceLoader,那么就会为改类型生成一个代理类型)
 		for (Class<?> autowiringType : this.resolvableDependencies.keySet()) {
 			if (autowiringType.isAssignableFrom(requiredType)) {
 				Object autowiringValue = this.resolvableDependencies.get(autowiringType);
@@ -1307,6 +1318,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				}
 			}
 		}
+		// 逐个判断查找一下beanName对应的BeanDefinition,判断一下是不是自动装配候选者,默认都是的,如果<bean>的autowire-candidate属性设置为flase就不是
 		for (String candidate : candidateNames) {
 			if (!isSelfReference(beanName, candidate) && isAutowireCandidate(candidate, descriptor)) {
 				addCandidateEntry(result, candidate, descriptor, requiredType);

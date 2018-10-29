@@ -162,6 +162,12 @@ public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanReg
 			if (System.getSecurityManager() != null) {
 				AccessControlContext acc = getAccessControlContext();
 				try {
+					/**
+					 * 最终调用getObject()方法获取对象.回过头去看之前的getObjectFromFactoryBEan方法,虽然if...else...逻辑最终都是调用了以上的方法,但是区别在于:
+					 * 		* 如果FactoryBean接口实现类的isSingleton方法返回的是true,那么每次调用getObject方法的时候会优先尝试从FactoryBean对象缓存中去目标对象,有就直接拿,
+					 * 		  没有就创建并放入FactoryBean对象缓存,这样保证了每次单例的FactoryBean调用getObject()方法后最终拿到的目标对象一定是单例的,即在内存中都是同一份
+					 * 		* 如果FactoryBean接口实现类的isSingleton方法返回的是false,那么每次调用getObject方法的时候都会新创建一个对象
+					 */
 					object = AccessController.doPrivileged((PrivilegedExceptionAction<Object>) factory::getObject, acc);
 				}
 				catch (PrivilegedActionException pae) {
