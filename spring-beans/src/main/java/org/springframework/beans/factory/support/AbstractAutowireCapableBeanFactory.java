@@ -173,8 +173,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		/**
 		 * 	ignoreDependencyInterfacehult 忽略给定接口的自动装配功能
 		 * 	目的是什么呢?会产生什么效果呢?
-		 * 	举例来说,当A中有属性B
-		 * 
+		 * 	举例来说,当A中有属性B,那么当Spring在获取A的Bean的时候如果其属性B还没有初始化,那么Spring会自动初始化B,这也是提供的一个重要特性.
+		 * 	但是某些情况下,B不会被初始化,其中的一种情况就是B实现了BeanNameAware接口.
+		 * 	Spring中是这样介绍的:自动装配时忽略给定的依赖接口,典型应用是通过其他方式解析Application上下文注册依赖,
+		 * 	类似于BeanFactory通过BeanFactoryAware进行注入或者ApplicationContext通过ApplicationContextAware进行注入.
 		 */
 		ignoreDependencyInterface(BeanNameAware.class);
 		ignoreDependencyInterface(BeanFactoryAware.class);

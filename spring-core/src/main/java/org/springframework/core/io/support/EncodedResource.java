@@ -140,6 +140,7 @@ public class EncodedResource implements InputStreamSource {
 			return new InputStreamReader(this.resource.getInputStream(), this.charset);
 		}
 		else if (this.encoding != null) {
+			// 当设置了编码属性的时候Spring会使用相应的编码作为输入流的编码
 			return new InputStreamReader(this.resource.getInputStream(), this.encoding);
 		}
 		else {
