@@ -549,7 +549,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				// BeanPostProcessor接口针对的是每个Bean初始化前后做的操作,而BeanFactoryPostProcessor接口针对的是所有Bean实例化前的操作
 				// 注意用词,初始化只是实例化的一部分,表示的是调用Bean的初始化方法,
 				// BeanFactoryPostProcessor接口方法调用时机是任意一个自定义的Bean被反射生成出来前.
-				// 我们可以自己实现BeanFactoryPostProcessor接口并实现postProcessorBeanFactory方法,在所有Bean加载的流程开始前,会调用一次psotProcessorBeanFactory方法.
+				// 我们可以自己实现BeanFactoryPostProcessor接口并实现postProcessorBeanFactory方法,在所有Bean加载的流程开始前,会调用一次postProcessorBeanFactory方法.
 				invokeBeanFactoryPostProcessors(beanFactory);
 
 				// Register bean processors that intercept bean creation.
@@ -706,7 +706,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(this));
 
 		// Detect a LoadTimeWeaver and prepare for weaving, if found.
-		// 如果自定义的Bena中有定义过一个名为"loadTimeWeaver"的Bean,则会添加一个LoadTimeWeaverAwareProcessor
+		// 如果自定义的Bean中有定义过一个名为"loadTimeWeaver"的Bean,则会添加一个LoadTimeWeaverAwareProcessor
 		if (beanFactory.containsBean(LOAD_TIME_WEAVER_BEAN_NAME)) {
 			beanFactory.addBeanPostProcessor(new LoadTimeWeaverAwareProcessor(beanFactory));
 			// Set a temporary ClassLoader for type matching.

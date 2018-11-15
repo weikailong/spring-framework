@@ -135,6 +135,7 @@ public class PropertyPlaceholderHelper {
 			if (endIndex != -1) {
 				String placeholder = result.substring(startIndex + this.placeholderPrefix.length(), endIndex);
 				String originalPlaceholder = placeholder;
+				// 如果set中已经包含该元素,则add操作不会改变此set并返回false.(判重的好办法)
 				if (!visitedPlaceholders.add(originalPlaceholder)) {
 					throw new IllegalArgumentException(
 							"Circular placeholder reference '" + originalPlaceholder + "' in property definitions");

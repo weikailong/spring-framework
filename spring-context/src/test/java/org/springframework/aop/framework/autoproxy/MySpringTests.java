@@ -16,12 +16,17 @@
 
 package org.springframework.aop.framework.autoproxy;
 
+import com.kaixin1928.model.MyTestBean;
 import org.junit.Test;
-import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.core.io.ClassPathResource;
 
 import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
 
 public class MySpringTests {
 	// TODO 隗凯隆
@@ -40,5 +45,17 @@ public class MySpringTests {
 		}
 		
 	}
+	
+	@Test
+	public void testSimpleLoad(){
+		
+		BeanFactory bf = new XmlBeanFactory(new ClassPathResource("spring/spring.xml"));
+		MyTestBean myTestBean = (MyTestBean) bf.getBean("myTestBean");
+		assertEquals("testStr", myTestBean.getTestStr());
+		
+	}
+	
+	
+	
 
 }
