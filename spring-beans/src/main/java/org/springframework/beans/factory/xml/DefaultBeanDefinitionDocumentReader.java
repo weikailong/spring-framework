@@ -94,7 +94,9 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	public void registerBeanDefinitions(Document doc, XmlReaderContext readerContext) {
 		this.readerContext = readerContext;
 		logger.debug("Loading bean definitions");
+		// 提取root
 		Element root = doc.getDocumentElement();
+		// 开始解析
 		doRegisterBeanDefinitions(root);
 	}
 
@@ -126,10 +128,19 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		// the new (child) delegate with a reference to the parent for fallback purposes,
 		// then ultimately reset this.delegate back to its original (parent) reference.
 		// this behavior emulates a stack of delegates without actually necessitating one.
+
+		/**
+		 * 首先是对profile的处理,然后开始进行解析,可是当我们跟进preProcessXml(root)或者postProcessXml(root)发现代码是空的,既然是空的
+		 * 写着还要什么用呢?就想面向对象设计方法学中常说的一句话,一个类要么是面向继承的设计的,要么就用final修饰.在DefaultBeanDefinitionDocumentReader中
+		 * 并没有用final修饰,所以它是面向继承而设计的.这个方法正式为子类而设计的.这是模板方法模式.如果继承自DefaultBeanDefinitionDocumentReader
+		 * 的子类需要在Bean解析前后做一些处理的话,那么只需要重写这两个方法即可.
+		 */
+		
 		BeanDefinitionParserDelegate parent = this.delegate;
 		this.delegate = createDelegate(getReaderContext(), root, parent);
 
 		if (this.delegate.isDefaultNamespace(root)) {
+			// 处理profile属性
 			String profileSpec = root.getAttribute(PROFILE_ATTRIBUTE);
 			if (StringUtils.hasText(profileSpec)) {
 				String[] specifiedProfiles = StringUtils.tokenizeToStringArray(
@@ -144,11 +155,15 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 			}
 		}
 
+		// 解析前处理,留给子类实现
 		preProcessXml(root);
+		// 读取xml
 		parseBeanDefinitions(root, this.delegate);
+		// 解析后处理,留给子类实现
 		postProcessXml(root);
 
 		this.delegate = parent;
+		
 	}
 
 	protected BeanDefinitionParserDelegate createDelegate(
@@ -165,18 +180,30 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * @param root the DOM root element of the document
 	 */
 	protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) {
+		// 对beans的处理
 		if (delegate.isDefaultNamespace(root)) {
 			NodeList nl = root.getChildNodes();
 			for (int i = 0; i < nl.getLength(); i++) {
 				Node node = nl.item(i);
 				if (node instanceof Element) {
 					Element ele = (Element) node;
+
+					/**
+					 * 在Spring的XML配置里面有两大类Bean声明,一个是默认的,如:
+					 * 		<bean id="test" class="test.testBean"/>
+					 * 另一类是自定义的,如:
+					 * 		<tx:annotation-driven/>
+					 * 而这两种方式的读取及解析差别是非常大的,如果采用Spring默认的配置,Spring当然知道该怎么做,但是如果是自定义的,那么就需要用户实现一些接口和配置了.
+					 * 对于根节点或者子节点如果默认命名空间的话则采用parseDefaultElement方法进行解析,否则使用delegate.parseCustomElement方法对自定义命名空间进行解析.
+					 * 而判断是否默认命名空间还是自定义命名空间的方法其实是使用node.getNamespaceURI()获取命名空间,并与Spring中固定的命名空间 http://www.Springfreamework.org/schema/beans
+					 * 进行比对.如果一致则认为是默认,否则就认为是自定义.
+					 */
 					if (delegate.isDefaultNamespace(ele)) {
-						// 正常来说,遇到<bean id="daoImpl"...>,<bean id="timeHandler"...>这两个标签的时候,都会执行第9行代码,因为<bean>标签是默认的Namespace.
+						// 对bean的处理
 						parseDefaultElement(ele, delegate);
 					}
 					else {
-						// 但是在遇到<aop:config>标签的时候会执行这句,<aop:config>并不是默认的Namespace
+						// 对bean的处理
 						delegate.parseCustomElement(ele);
 					}
 				}
@@ -188,15 +215,20 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	}
 
 	private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate delegate) {
+		
+		// 对import标签进行处理
 		if (delegate.nodeNameEquals(ele, IMPORT_ELEMENT)) {
 			importBeanDefinitionResource(ele);
 		}
+		// 对alias标签进行处理
 		else if (delegate.nodeNameEquals(ele, ALIAS_ELEMENT)) {
 			processAliasRegistration(ele);
 		}
+		// 对bean标签进行处理
 		else if (delegate.nodeNameEquals(ele, BEAN_ELEMENT)) {
 			processBeanDefinition(ele, delegate);
 		}
+		// 对beans标签的处理
 		else if (delegate.nodeNameEquals(ele, NESTED_BEANS_ELEMENT)) {
 			// recurse
 			doRegisterBeanDefinitions(ele);
@@ -304,11 +336,22 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * and registering it with the registry.
 	 */
 	protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate) {
+		
+		/**
+		 * (1)	首先委托BeanDefinitionDelegate类的parseBeanDefinitionElement方法进行元素解析,返回BeanDefinitionHolder类型的实例bdHolder,
+		 * 		经过这个方法之后,bdHolder实例已经包含了我们配置文件中配置的各种属性了,例如class,name,id,alias之类的属性
+		 */
 		BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
+		/**
+		 * (2)	当返回的bdHolder不为空的情况下若存在默认标签的子节点下再有自定义属性,还需要再次对自定义标签进行解析.
+		 */
 		if (bdHolder != null) {
 			bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
 			try {
 				// Register the final decorated instance.
+				/**
+				 * (3)	解析完成后,需要对解析后的bdHolder进行注册,同样,注册操作委托给了BeanDefinitionReaderUtils的registerBeanDefinition方法
+				 */
 				BeanDefinitionReaderUtils.registerBeanDefinition(bdHolder, getReaderContext().getRegistry());
 			}
 			catch (BeanDefinitionStoreException ex) {
@@ -316,6 +359,9 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 						bdHolder.getBeanName() + "'", ele, ex);
 			}
 			// Send registration event.
+			/**
+			 * (4)	最后发出响应事件,通知相关的监听器,这个bean已经加载完成了.
+			 */
 			getReaderContext().fireComponentRegistered(new BeanComponentDefinition(bdHolder));
 		}
 	}
