@@ -380,6 +380,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				// 实例化依赖的bean后便可以实例化mbd本身了
 				// singleton模式的创建
 				if (mbd.isSingleton()) {
+					/**
+					 * 	如果缓存中不存在已经加载的单例bean就需要从头开始bean的加载过程了,
+					 * 	而Spring中使用getSingleton的重载方法实现bean的加载过程
+					 */
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
 							return createBean(beanName, mbd, args);
@@ -1684,9 +1688,17 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	protected Object getObjectForBeanInstance(
 			Object beanInstance, String name, String beanName, @Nullable RootBeanDefinition mbd) {
 
+		/**
+		 * 	(1)	对FactoryBean正确性的验证.
+		 * 	(2)	对非FactoryBean不做任何处理
+		 * 	(3)	对bean进行转换.
+		 * 	(4)	将从Factory中解析bean的工作委托给getObjectFromFactoryBean
+		 */
+		
 		// Don't let calling code try to dereference the factory if the bean isn't a factory.
 		// 判断一下是否beanName以"&"开头并且不是FactoryBean的实现类
 		// beanName以"&"开头是FactoryBean的实现类bean定义的一个特征
+		// 如果指定的name是工厂相关(以&为前缀)且beanInstance又不是FactoryBean类型则验证不通过
 		if (BeanFactoryUtils.isFactoryDereference(name)) {
 			if (beanInstance instanceof NullBean) {
 				return beanInstance;
@@ -1705,17 +1717,23 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			return beanInstance;
 		}
 
+		// 加载FactoryBean
 		Object object = null;
 		if (mbd == null) {
+			// 尝试从缓存中加载bean
 			object = getCachedObjectForFactoryBean(beanName);
 		}
 		if (object == null) {
 			// Return bean instance from factory.
+			// 到这里已经明确知道beanInstance一定是FactoryBean类型
 			FactoryBean<?> factory = (FactoryBean<?>) beanInstance;
 			// Caches object obtained from FactoryBean if it is a singleton.
+			// containsBeanDefinition检测beanDefinitionMap中也就是在所有已经加载的类中检测是否定义beanName
 			if (mbd == null && containsBeanDefinition(beanName)) {
+				// 将存储XML配置文件的GenericBeanDefinition转换为RootBeanDefinition,如果指定BeanName是子Bean的话同时会合并父类的相关属性
 				mbd = getMergedLocalBeanDefinition(beanName);
 			}
+			// 是否是用户定义的而不是应用程序本身定义的
 			boolean synthetic = (mbd != null && mbd.isSynthetic());
 			object = getObjectFromFactoryBean(factory, beanName, !synthetic);
 		}

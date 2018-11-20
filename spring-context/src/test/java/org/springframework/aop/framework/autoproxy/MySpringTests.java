@@ -54,8 +54,14 @@ public class MySpringTests {
 		assertEquals("testStr", myTestBean.getTestStr());
 		
 	}
-	
-	
+
+	@Test
+	public void testSpring2(){
+		
+		ApplicationContext ac = new ClassPathXmlApplicationContext("spring/spring.xml");
+		System.out.println(ac.getBean("testA"));
+		
+	}
 	
 
 }

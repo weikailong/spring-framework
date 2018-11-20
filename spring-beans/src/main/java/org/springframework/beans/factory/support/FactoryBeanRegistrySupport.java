@@ -95,6 +95,13 @@ public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanReg
 	 * @see org.springframework.beans.factory.FactoryBean#getObject()
 	 */
 	protected Object getObjectFromFactoryBean(FactoryBean<?> factory, String beanName, boolean shouldPostProcess) {
+
+		/**
+		 * 	这个方法里面只做了一件事,就是返回的bean如果是单例的,那就必须要保证全局唯一,同时,也因为是单例的,所以不知重复创建,可以
+		 * 	使用缓存来提高性能,也就是说已经加载过就要记录下来以便于下次复用,否则的话,就直接获取了.
+		 */
+
+		// 如果是单例
 		if (factory.isSingleton() && containsSingleton(beanName)) {
 			synchronized (getSingletonMutex()) {
 				Object object = this.factoryBeanObjectCache.get(beanName);
@@ -136,6 +143,10 @@ public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanReg
 			Object object = doGetObjectFromFactoryBean(factory, beanName);
 			if (shouldPostProcess) {
 				try {
+					// 我们需了解在Spring获取bean的规则中有一条:尽可能保证所有bean初始化后都会调用注册的BeanPostProcessor的
+					// postProcessAfterInitialization方法进行处理,在实际开发过程中可以针对此特性设计自己的业务逻辑
+					
+					// 调用ObjectFactory的后处理器
 					object = postProcessObjectFromFactoryBean(object, beanName);
 				}
 				catch (Throwable ex) {
@@ -159,6 +170,7 @@ public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanReg
 
 		Object object;
 		try {
+			// 需要权限验证
 			if (System.getSecurityManager() != null) {
 				AccessControlContext acc = getAccessControlContext();
 				try {
@@ -175,6 +187,7 @@ public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanReg
 				}
 			}
 			else {
+				// 直接调用getObject方法
 				object = factory.getObject();
 			}
 		}

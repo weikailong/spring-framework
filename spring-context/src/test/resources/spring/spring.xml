@@ -6,4 +6,14 @@
 	
 	<bean id="myTestBean" class="com.kaixin1928.model.MyTestBean" />
 	
+	<bean id="testA" class="com.kaixin1928.model.TestA" scope="prototype">
+		<property name="testB" ref="testB"/>
+	</bean>
+	<bean id="testB" class="com.kaixin1928.model.TestB" scope="prototype">
+		<property name="testC" ref="testC"/>
+	</bean>
+	<bean id="testC" class="com.kaixin1928.model.TestC" scope="prototype">
+		<property name="testA" ref="testA"/>
+	</bean>
+	
 </beans>
