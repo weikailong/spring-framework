@@ -265,7 +265,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		 * 			对于B的创建再次返回创建A,造成循环依赖,也就是情况:isPrototypeCurrentlyInCreation(beanName)判断true.
 		 * 		(5)	检查parentBeanFactory
 		 * 				从代码上看,如果缓存中没有数据的话直接转到父类工厂上去加载了,这是为什么呢?
-		 * 				读者可能忽略了一个很重要的判断条件:parentBeanFactory != null && !containsBeanDefinition(beanName).parentBenaFactory如果为空,则其他一切
+		 * 				读者可能忽略了一个很重要的判断条件:parentBeanFactory != null && !containsBeanDefinition(beanName).parentBeanFactory如果为空,则其他一切
 		 * 			都是浮云,但是!contiansBeanDefinition(beanName)就比较重要了,它是在检测如果当前加载的XML配置文件中不包含beanName所对应的配置,就只能到parentBeanFactory
 		 * 			去尝试下了,然后再去递归的调用getBean方法.	
 		 * 		(6)	将存储XML配置文件的GenericBeanDefinition转换为RootBeanDefinition

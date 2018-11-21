@@ -1093,12 +1093,15 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 		else if (ObjectFactory.class == descriptor.getDependencyType() ||
 				ObjectProvider.class == descriptor.getDependencyType()) {
+			// ObjectFactory类注入的特殊处理
 			return new DependencyObjectProvider(descriptor, requestingBeanName);
 		}
 		else if (javaxInjectProviderClass == descriptor.getDependencyType()) {
+			// javaxInjectProviderClass类注入的特殊处理
 			return new Jsr330ProviderFactory().createDependencyProvider(descriptor, requestingBeanName);
 		}
 		else {
+			// 通用处理逻辑
 			Object result = getAutowireCandidateResolver().getLazyResolutionProxyIfNecessary(
 					descriptor, requestingBeanName);
 			if (result == null) {
@@ -1112,6 +1115,12 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	public Object doResolveDependency(DependencyDescriptor descriptor, @Nullable String beanName,
 			@Nullable Set<String> autowiredBeanNames, @Nullable TypeConverter typeConverter) throws BeansException {
 
+		/**
+		 * 	寻找类型的匹配执行顺序时,首先尝试使用解析器进行解析,如果解析器没有成功解析,那么可能是使用默认的解析器没有做任何处理,或者是使用了
+		 * 	自定义的解析器,但是对于集合等类型来说并不在解析范围之内,所以再次对不同类型进行不同情况的处理,虽说对于不同类型处理方式不一致,但是
+		 * 	大致的思路还是很相似的.
+		 */
+		
 		InjectionPoint previousInjectionPoint = ConstructorResolver.setCurrentInjectionPoint(descriptor);
 		try {
 			Object shortcut = descriptor.resolveShortcut(this);
@@ -1120,6 +1129,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 
 			Class<?> type = descriptor.getDependencyType();
+			// 用于支持Spring中新增的注解@value
 			Object value = getAutowireCandidateResolver().getSuggestedValue(descriptor);
 			if (value != null) {
 				if (value instanceof String) {
@@ -1146,8 +1156,11 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			 * 	
 			 * 	所有的带注入的PropertyName-->PropertyValue映射拿到之后都只是放在MutablePropertyValues中,最后由AbstractPropertyAccessor类的setPropertyValues方法遍历并进行逐一注入
 			 */
+			// 根据属性类型找到beanFactory中所有类型的匹配bean,
+			// 返回值的构成: key=匹配的beanName,value=beanName对应的实例化后的bean(通过.getBean(beanName)返回)
 			Map<String, Object> matchingBeans = findAutowireCandidates(beanName, type, descriptor);
 			if (matchingBeans.isEmpty()) {
+				// 如果autowire的require属性为true而找不到匹配项则只能抛出异常
 				if (isRequired(descriptor)) {
 					raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);
 				}
@@ -1174,6 +1187,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 			else {
 				// We have exactly one match.
+				// 已经可以确定只有一个匹配项
 				Map.Entry<String, Object> entry = matchingBeans.entrySet().iterator().next();
 				autowiredBeanName = entry.getKey();
 				instanceCandidate = entry.getValue();

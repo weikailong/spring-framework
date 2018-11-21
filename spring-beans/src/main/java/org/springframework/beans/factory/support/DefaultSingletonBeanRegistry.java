@@ -232,7 +232,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 		 * 		(3)	加载单例前记录加载状态
 		 * 				可能你会觉得beforeSingletonCreation方法是个空实现,里面没有任何逻辑,但其实不是,这个函数中做了一个很重要的操作:记录加载状态,
 		 * 				也就是通过this.singletonsCurrentlyInCreation.add(beanName)将当前正要创建的bean记录在缓存中,这样便可以对循环依赖进行检查.	
-		 * 		(4)	通过调用参数传入的ObjectFactory的个体Object方法实例化bean
+		 * 		(4)	通过调用参数传入的ObjectFactory的getObject方法实例化bean
 		 * 		(5)	加载单例后的处理方法调用
 		 * 				同步骤(3)的记录加载状态相似,当bean加载结束后需要移除缓存中对该bean的正在加载状态的记录	
 		 * 		(6)	将结果记录至缓存并删除加载bean过程中所记录的各种辅助状态
