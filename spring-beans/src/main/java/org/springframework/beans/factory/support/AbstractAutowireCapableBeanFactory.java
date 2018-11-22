@@ -709,6 +709,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		// Register bean as disposable.
 		try {
+			/**
+			 * 			Spring不但提供了对是初始化方法的扩展入口,同样也提供了销毁方法的扩展入口,对于销毁方法的扩展,除了我们熟知的配置属性
+			 * 		init-method方法外,用户还可以注册后处理器DestructionAwareBeanPostProcessor来统一处理bean的销毁方法.
+			 */
 			// 根据scope注册bean
 			registerDisposableBeanIfNecessary(beanName, bean, mbd);
 		}
@@ -1885,16 +1889,29 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}, getAccessControlContext());
 		}
 		else {
+			// 对特殊的bean处理:Aware,BeanClassLoaderAware,BeanFactoryAware
 			invokeAwareMethods(beanName, bean);
 		}
 
+		/**
+		 * 		BeanPostProcessor,是Spring开放式架构中一个必不可少的亮点,给用户充足的权限去更改或者扩展Spring,而除了BeanPostProcessor外
+		 * 	还有很多其他的PostProcessor,当然大部分都是以此为基础,继承自BeanPostProcessor.BeanPostProcessor的使用位置就是这里,在调用客户
+		 * 	自定义初始化方法前以及调用自定义初始化方法后分别会调用BeanPostProcessor的postProcessBeforeInitialization和postProcessAfterInitialization方法,
+		 * 	使用户可以根据自己的业务相应的处理.
+		 */
 		Object wrappedBean = bean;
 		if (mbd == null || !mbd.isSynthetic()) {
+			// 应用后处理器
 			wrappedBean = applyBeanPostProcessorsBeforeInitialization(wrappedBean, beanName);
 		}
 
 		try {
-			// 调用Bean的初始化方法
+			/**
+			 * 		客户定制的初始化方法除了我们熟知的使用配置init-method外,还有使用自定义的bean实现InitializationBean接口,并在
+			 * 	afterPropertiesSet中实现自己的初始化业务逻辑.
+			 * 		init-method与afterPropertiesSet都是在初始化bean时执行,执行顺序是afterPropertiesSet先执行,而init-method后执行.
+			 */
+			// 调用Bean的初始化方法, 激活用户自定义的init方法
 			invokeInitMethods(beanName, wrappedBean, mbd);
 		}
 		catch (Throwable ex) {
@@ -1903,6 +1920,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 					beanName, "Invocation of init method failed", ex);
 		}
 		if (mbd == null || !mbd.isSynthetic()) {
+			// 后处理器应用
 			wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
 		}
 
@@ -1962,6 +1980,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				}
 			}
 			else {
+				// 属性初始化后的处理
 				((InitializingBean) bean).afterPropertiesSet();
 			}
 		}
@@ -1972,6 +1991,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			if (StringUtils.hasLength(initMethodName) &&
 					!(isInitializingBean && "afterPropertiesSet".equals(initMethodName)) &&
 					!mbd.isExternallyManagedInitMethod(initMethodName)) {
+				// 调用自定义初始化方法
 				invokeCustomInitMethod(beanName, bean, mbd);
 			}
 		}
