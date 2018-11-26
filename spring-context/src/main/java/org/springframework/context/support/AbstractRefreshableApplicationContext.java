@@ -227,7 +227,7 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 		}
 		if (this.allowCircularReferences != null) {
 			beanFactory.setAllowCircularReferences(this.allowCircularReferences);
-		}
+		}         
 	}
 
 	/**

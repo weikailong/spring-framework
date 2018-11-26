@@ -515,18 +515,38 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 	@Override
 	public void refresh() throws BeansException, IllegalStateException {
-		
+
 		/**
-		 * 	1.方法是加锁的,这么做的原因是避免多个线程同时刷新Spring上下文
-		 * 	2.尽管加锁可以看到是针对整个方法体的,但是没有在方法前加synchronized关键字,而使用了对象锁startupShutdownMonitor,这样做的好处:
-		 * 		(1)refresh()方法和close()方法都使用了startupShutdownMonitor对象加锁,这就保证了在调用refresh()方法的时候无法调用close()方法,反而亦然,避免了冲突
-		 * 		(2)使用对象锁可以减小同步的范围,只对不能并发的代码块进行加锁,提高了整体代码运行的效率
-		 * 	3.方法里面使用了每个子方法定义了整个refresh()方法的流程,是的整个方法流程清晰易懂.这方值得学习.
-		 * 		方法太大的缺点:
-		 * 			(1)扩展性降低.反过来讲,假设把流程定义为方法,子类可以继承父类,可以根据需要重写方法
-		 * 			(2)代码可读性差.
-		 * 			(3)代码可维护性差.	
+		 * 	ClassPathXmlApplicationContext初始化步骤:
+		 * 		(1)	初始化前的准备工作,例如对系统属性或者环境变量进行准备及验证
+		 * 				在某种情况下项目的使用需要读取某些系统变量,而这个变量的设置很可能会影响着系统的正确性,	那么ClassPathXmlApplicationContext
+		 * 			为我们提供的这个准备函数就显得非常必要,它可以在Spring启动的时候提前对必须的变量进行存在性验证.
+		 * 		
+		 * 		(2)	初始化BeanFactory,并进行XML文件读取
+		 * 				之前提到ClassPathXmlApplicationContext包含着BeanFactory所提供的一切特征,那么在这一步骤中将会复用BeanFactory中的配置文			
+		 * 			件读取解析及其他功能,这一步之后,ClassPathXmlApplicationContext实际上就已经包含了BeanFactory所提供的功能,也就是可以进行Bean
+		 * 			的提取等基础操作了.
+		 * 		
+		 * 		(3)	对BeanFactory进行各种功能填充
+		 * 				@Qualifier 和 @AutoWired这两个注解正是在这一步骤中增加的支持
+		 * 		
+		 * 		(4)	子类覆盖方法做额外的处理
+		 * 				Spring之所以强大,出了它功能上为大家提供便利外,还有一方面是它的完美架构,开放式的架构让使用它的程序员很容易根据业务许村扩展已
+		 * 			经存在的功能.这种开放式的设计在Spring中随处可见,例如在本例中就提供了一个空的函数实现postProcessBeanFactory来方便程序员在业务
+		 * 			上做进一步的扩展.
+		 * 		
+		 * 		(5)	激活各种BeanFactory处理器
+		 * 		(6)	注册拦截bean创建的bean处理器,这里只是注册,真正的调用是在getBean的时候
+		 * 		(7)	为上下文初始化Message源,即对不同语言的消息体进行国际化处理.
+		 * 		(8)	初始化应用消息广播器,并放入"applicationEventMulticaster" bean中
+		 * 		(9) 留给子类来初始化其它的bean.
+		 * 		(10) 在所有注册的bean中查找listener bean,注册到消息广播器中.
+		 * 		(11) 初始化剩下的单实例(非惰性的)
+		 * 		(12) 完成刷新过程,通知生命周期处理器lifecycleProcessor刷新过程,同时发出ContextRefreshEvent通知别人.	
+		 * 
 		 */
+
+
 		// 加锁;
 		// startupShutdownMonitor是refresh方法和destory方法共用的一个监视器,避免两个方法同时执行
 		synchronized (this.startupShutdownMonitor) {
@@ -534,7 +554,6 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			// 准备刷新的上下文环境
 			prepareRefresh();
 
-			// obtainFreshBeanFactory方法的作用是获取刷新Spring上下文的Bean工厂
 			// Tell the subclass to refresh the internal bean factory.
 			// 初始化BeanFactory,并进行XML文件读取
 			ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
@@ -549,11 +568,6 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				postProcessBeanFactory(beanFactory);
 
 				// Invoke factory processors registered as beans in the context.
-				// 此方法在整个Spring流程中非常重要.是Spring留给用户的一个有用的扩展点.
-				// BeanPostProcessor接口针对的是每个Bean初始化前后做的操作,而BeanFactoryPostProcessor接口针对的是所有Bean实例化前的操作
-				// 注意用词,初始化只是实例化的一部分,表示的是调用Bean的初始化方法,
-				// BeanFactoryPostProcessor接口方法调用时机是任意一个自定义的Bean被反射生成出来前.
-				// 我们可以自己实现BeanFactoryPostProcessor接口并实现postProcessorBeanFactory方法,在所有Bean加载的流程开始前,会调用一次postProcessorBeanFactory方法.
 				// 激活各种BeanFactory处理器 
 				invokeBeanFactoryPostProcessors(beanFactory);
 
@@ -563,7 +577,6 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				registerBeanPostProcessors(beanFactory);
 
 				// Initialize message source for this context.
-				// 初始化MessageSource,MessageSource是Spring定义的用于实现访问国际化的接口
 				// 为上下文初始化Message源,即不同语言的消息体,国际化处理
 				initMessageSource();
 
@@ -572,35 +585,20 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				initApplicationEventMulticaster();
 
 				// Initialize other special beans in specific context subclasses.
-				// 一个模板方法,重写它的作用是添加特殊上下文刷新的工作,在特殊Bean的初始化时,初始化之前被调用.
-				// 在Spring中,AbstractRefreshableWebApplicationContext,GenericWebApplicationContext,StaticWebApplicationContext都实现了这个方法.
 				// 留给子类来初始化其它的bean
 				onRefresh();
 
 				// Check for listener beans and register them.
-				// 注册监听器
 				// 在所有注册的bean中查找Listener bean,注册到消息广播器中
 				registerListeners();
 
-				// 完成对于所有非懒加载的Bean的初始化
 				// Instantiate all remaining (non-lazy-init) singletons.
-				// 初始化盛夏的单实例(非惰性的)
+				// 初始化剩下的单实例(非惰性的)
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
 				// 完成刷新过程,通知生命周期处理器lifecycleProcessor刷新过程,同时发出ContextRefreshEvent通知别人
 				finishRefresh();
-
-				/**
-				 *  AbstractApplicationContext的refresh方法,从中可以读到的细节:
-				 *  	* Spring默认加载的两个Bean,systemProperties和systemEnvironment,分别用于获取环境信息,系统信息
-				 *  	* BeanFactoryPostProcessor接口用于在所有Bean实例化之前调用一次postProcessBeanFactory
-				 *  	* 可以通过实现PriorityOrder,Order接口控制BeanFactoryPostProcessor调用顺序
-				 *  	* 可以通过实现priorityOrder,Order接口控制BeanPostProcessor调用顺序
-				 *  	* 默认的MessageSource,名为"messageSource"
-				 *  	* 默认的ApplicationEventMulticaster,名为"applicationEventMulticaster"
-				 *  	* 默认的LifecycleProcessor,名为"lifecycleProcessor"	
-				 */
 
 			}
 
@@ -645,11 +643,10 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			logger.info("Refreshing " + this);
 		}
 
-		// Initialize any placeholder property sources in the context environment
+		// 留给子类覆盖
 		initPropertySources();
 
-		// Validate that all properties marked as required are resolvable
-		// see ConfigurablePropertyResolver#setRequiredProperties
+		// 验证需要的属性文件是否都已经放入环境中
 		getEnvironment().validateRequiredProperties();
 
 		// Allow for the collection of early ApplicationEvents,
