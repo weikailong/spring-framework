@@ -531,17 +531,21 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		// startupShutdownMonitor是refresh方法和destory方法共用的一个监视器,避免两个方法同时执行
 		synchronized (this.startupShutdownMonitor) {
 			// Prepare this context for refreshing.
+			// 准备刷新的上下文环境
 			prepareRefresh();
 
 			// obtainFreshBeanFactory方法的作用是获取刷新Spring上下文的Bean工厂
 			// Tell the subclass to refresh the internal bean factory.
+			// 初始化BeanFactory,并进行XML文件读取
 			ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
 			// Prepare the bean factory for use in this context.
+			// 对BeanFactory进行各种功能填充
 			prepareBeanFactory(beanFactory);
 
 			try {
 				// Allows post-processing of the bean factory in context subclasses.
+				// 子类覆盖方法做额外的处理
 				postProcessBeanFactory(beanFactory);
 
 				// Invoke factory processors registered as beans in the context.
@@ -550,34 +554,41 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				// 注意用词,初始化只是实例化的一部分,表示的是调用Bean的初始化方法,
 				// BeanFactoryPostProcessor接口方法调用时机是任意一个自定义的Bean被反射生成出来前.
 				// 我们可以自己实现BeanFactoryPostProcessor接口并实现postProcessorBeanFactory方法,在所有Bean加载的流程开始前,会调用一次postProcessorBeanFactory方法.
+				// 激活各种BeanFactory处理器 
 				invokeBeanFactoryPostProcessors(beanFactory);
 
 				// Register bean processors that intercept bean creation.
 				// 注册自定义的BeanPostProcessor接口
+				// 注册拦截Bean创建的Bean处理器,这里只是注册,真正的调用是在getBean时候
 				registerBeanPostProcessors(beanFactory);
 
 				// Initialize message source for this context.
 				// 初始化MessageSource,MessageSource是Spring定义的用于实现访问国际化的接口
+				// 为上下文初始化Message源,即不同语言的消息体,国际化处理
 				initMessageSource();
 
 				// Initialize event multicaster for this context.
-				// 初始化上下文事件广播器
+				// 初始化上下文事件广播器,并放入"applicationEventMulticaster"bean中
 				initApplicationEventMulticaster();
 
 				// Initialize other special beans in specific context subclasses.
 				// 一个模板方法,重写它的作用是添加特殊上下文刷新的工作,在特殊Bean的初始化时,初始化之前被调用.
 				// 在Spring中,AbstractRefreshableWebApplicationContext,GenericWebApplicationContext,StaticWebApplicationContext都实现了这个方法.
+				// 留给子类来初始化其它的bean
 				onRefresh();
 
 				// Check for listener beans and register them.
 				// 注册监听器
+				// 在所有注册的bean中查找Listener bean,注册到消息广播器中
 				registerListeners();
 
 				// 完成对于所有非懒加载的Bean的初始化
 				// Instantiate all remaining (non-lazy-init) singletons.
+				// 初始化盛夏的单实例(非惰性的)
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
+				// 完成刷新过程,通知生命周期处理器lifecycleProcessor刷新过程,同时发出ContextRefreshEvent通知别人
 				finishRefresh();
 
 				/**

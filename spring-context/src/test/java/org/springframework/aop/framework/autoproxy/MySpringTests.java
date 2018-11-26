@@ -52,7 +52,9 @@ public class MySpringTests {
 		BeanFactory bf = new XmlBeanFactory(new ClassPathResource("spring/spring.xml"));
 		MyTestBean myTestBean = (MyTestBean) bf.getBean("myTestBean");
 		assertEquals("testStr", myTestBean.getTestStr());
-		
+
+		ApplicationContext ac = new ClassPathXmlApplicationContext("spring/spring.xml");
+
 	}
 
 	@Test
