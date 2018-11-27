@@ -77,6 +77,12 @@ class ApplicationContextAwareProcessor implements BeanPostProcessor {
 	@Override
 	@Nullable
 	public Object postProcessBeforeInitialization(final Object bean, String beanName) throws BeansException {
+
+		/**
+		 * 	此方法中调用了invokeAwareInterfaces.从invokeAwareInterfaces方法中,
+		 * 	实现这些Aware接口的bean在被初始化之后,可以取得一些对应的资源.
+		 */
+
 		AccessControlContext acc = null;
 
 		if (System.getSecurityManager() != null &&

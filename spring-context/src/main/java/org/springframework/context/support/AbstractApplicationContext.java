@@ -727,9 +727,18 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		// 为beanFactory增加了一个默认的propertyEditor,这个主要是对bean的属性等设置管理的一个工具
 		beanFactory.addPropertyEditorRegistrar(new ResourceEditorRegistrar(this, getEnvironment()));
 
-		// 添加BeanPostProcessor
+		/**
+		 * 		ApplicationContextAwareProcessor实现BeanPostProcessor接口,之前讲过,在bean实例化的时候,也就是Spring激活bean的
+		 * 	init-method的前后,会调用BeanPostProcessor的postProcessBeforeInitialization方法和postProcessAfterInitialization方法.
+ 		 */
+		// 添加BeanPostProcessor; 主要目的就是注册个BeanPostProcessor,真正的逻辑还是在ApplicationContextAwareProcessor中.
 		beanFactory.addBeanPostProcessor(new ApplicationContextAwareProcessor(this));
-		
+
+		/**
+		 * 		当Spring将ApplicationContextAwareProcessor注册后,那么在invokeAwareInterfaces方法中间接调用的Aware类已经不是普通的bean了,
+		 * 	如ResourceLoaderAware,ApplicationEventPublisherAware等,那么需要在Spring做bean的依赖注入的时候忽略他们.而ignoreDependencyInterface
+		 * 	的作用正是如此.
+		 */
 		// 设置几个忽略自动装配的接口
 		beanFactory.ignoreDependencyInterface(EnvironmentAware.class);
 		beanFactory.ignoreDependencyInterface(EmbeddedValueResolverAware.class);
@@ -739,6 +748,10 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		beanFactory.ignoreDependencyInterface(ApplicationContextAware.class);
 
 		// 修正依赖,这里是一些自动装配的特殊规则,比如是BeanFactory接口的实现类,则修正为当前BeanFactory
+		/**
+		 * 	当注册了依赖解析后,例如当注册了对BeanFactory.class的解析依赖后,当bean的属性注入的时候,
+		 * 	一旦检测到属性为BeanFactory类型,便会将beanFactory实例注入进去
+		 */
 		// 设置了几个自动装配的特殊规则
 		beanFactory.registerResolvableDependency(BeanFactory.class, beanFactory);
 		beanFactory.registerResolvableDependency(ResourceLoader.class, this);
