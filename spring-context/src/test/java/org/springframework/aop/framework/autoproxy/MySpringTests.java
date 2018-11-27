@@ -16,6 +16,7 @@
 
 package org.springframework.aop.framework.autoproxy;
 
+import com.kaixin1928.model.MyClassPathXmlApplicationContext;
 import com.kaixin1928.model.MyTestBean;
 import org.junit.Test;
 import org.springframework.beans.factory.BeanFactory;
@@ -64,6 +65,13 @@ public class MySpringTests {
 		System.out.println(ac.getBean("testA"));
 		
 	}
-	
+
+	@Test
+	public void testSpring3(){
+
+		ApplicationContext ac = new MyClassPathXmlApplicationContext("spring/spring.xml");
+		System.out.println(ac.getBean("testA"));
+
+	}
 
 }
