@@ -74,4 +74,15 @@ public class MySpringTests {
 
 	}
 
+	@Test
+	public void testSpring4(){
+
+		ApplicationContext ac = new ClassPathXmlApplicationContext("spring/spring.xml");
+		MyTestBean test = (MyTestBean) ac.getBean("test");
+		test.test();
+
+
+	}
+	
+
 }

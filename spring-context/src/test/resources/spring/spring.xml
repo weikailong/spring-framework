@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
 
 	
 	<bean id="myTestBean" class="com.kaixin1928.model.MyTestBean" />
@@ -15,5 +15,9 @@
 	<bean id="testC" class="com.kaixin1928.model.TestC" scope="prototype">
 		<property name="testA" ref="testA"/>
 	</bean>
+	
+	<aop:aspectj-autoproxy/>
+	<bean id="test" class="com.kaixin1928.model.MyTestBean"/>
+	<bean class="com.kaixin1928.model.AspectJTest" />
 	
 </beans>
