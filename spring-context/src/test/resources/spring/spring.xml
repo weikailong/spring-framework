@@ -6,14 +6,16 @@
 	
 	<bean id="myTestBean" class="com.kaixin1928.model.MyTestBean" />
 	
-	<bean id="testA" class="com.kaixin1928.model.TestA" scope="prototype">
+	<bean id="testA" class="com.kaixin1928.model.TestA">
 		<property name="testB" ref="testB"/>
 	</bean>
-	<bean id="testB" class="com.kaixin1928.model.TestB" scope="prototype">
+	<bean id="testB" class="com.kaixin1928.model.TestB">
 		<property name="testC" ref="testC"/>
 	</bean>
-	<bean id="testC" class="com.kaixin1928.model.TestC" scope="prototype">
+	<bean id="testC" class="com.kaixin1928.model.TestC">
 		<property name="testA" ref="testA"/>
 	</bean>
 	
+	<!--<bean class="org.springframework.beans.factory.config.MyInstantiationAwareBeanPostProcessor"/>-->
+	<bean id="testListener" class="com.kaixin1928.model.TestListener"/>
 </beans>

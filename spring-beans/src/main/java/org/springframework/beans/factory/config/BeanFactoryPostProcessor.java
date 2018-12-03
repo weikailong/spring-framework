@@ -46,6 +46,18 @@ import org.springframework.beans.BeansException;
 public interface BeanFactoryPostProcessor {
 
 	/**
+	 * 		BeanFactoryPostProcessor可以对bean的定义(配置元数据)进行处理.也就是说,Spring IoC容器允许BeanFactoryPostProcessor
+	 * 	在容器实际实例化任何其他的bean之前读取配置元数据,并有可能修改它.如果你愿意,你可以配置多个BeanFactoryPostProcessor.
+	 * 	你还能通过设置"order"属性来控制BeanFactory的执行次序(仅当BeanFactoryPostProcessor实现了Ordered接口时你才可以设置此
+	 * 	属性,因此在实现BeanFactoryPostProcessor时,就应当考虑实现Ordered接口).
+	 * 		如果你想改变实际的bean实例(例如从配置元数据创建的对象),那么你最好使用BeanPostProcessor.同样的,BeanFactoryPostProcessor
+	 * 	的作用域范围是容器级的.它只和你所使用的容器有关.如果你在容器中定义一个BeanFactoryPostProcessor,它仅仅对此容器中的bean进行后置
+	 * 	处理.BeanFactoryPostProcessor不会对定义在另一个容器中的bean进行后置处理,即使这两个容器都是在同一层次上.
+	 * 		P147
+	 * 		通过实现BeanFactoryPostProcessor接口,BeanFactory会在实例化任何bean之前获得配置信息,从而能够正确解析bean描述文件中的变量引用.	
+	 */
+
+	/**
 	 * Modify the application context's internal bean factory after its standard
 	 * initialization. All bean definitions will have been loaded, but no beans
 	 * will have been instantiated yet. This allows for overriding or adding

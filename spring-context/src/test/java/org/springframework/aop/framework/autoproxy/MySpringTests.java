@@ -18,6 +18,7 @@ package org.springframework.aop.framework.autoproxy;
 
 import com.kaixin1928.model.MyClassPathXmlApplicationContext;
 import com.kaixin1928.model.MyTestBean;
+import com.kaixin1928.model.TestEvent;
 import org.junit.Test;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
@@ -62,8 +63,12 @@ public class MySpringTests {
 	public void testSpring2(){
 		
 		ApplicationContext ac = new ClassPathXmlApplicationContext("spring/spring.xml");
-		System.out.println(ac.getBean("testA"));
-		
+		System.out.println(ac.getBean("myTestBean"));
+
+		System.out.println("~~~~~~~~~~~~~~~~~~~~~");
+		BeanFactory bf = new XmlBeanFactory(new ClassPathResource("spring/spring.xml"));
+		MyTestBean myTestBean = (MyTestBean) bf.getBean("myTestBean");
+		System.out.println(myTestBean);
 	}
 
 	@Test
@@ -73,5 +78,16 @@ public class MySpringTests {
 		System.out.println(ac.getBean("testA"));
 
 	}
+
+	@Test
+	public void testSpring4(){
+
+		ApplicationContext ac = new ClassPathXmlApplicationContext("spring/spring.xml");
+		TestEvent event = new TestEvent("hello", "msg");
+		ac.publishEvent(event);
+
+	}
+	
+	
 
 }

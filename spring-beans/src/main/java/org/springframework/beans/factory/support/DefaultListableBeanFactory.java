@@ -733,6 +733,13 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			this.logger.debug("Pre-instantiating singletons in " + this);
 		}
 
+		/**
+		 * 		ApplicationContext实现的默认行为就是在启动时将所有单例bean提前进行实例化.提前实例化意味着作为初始化过程的一部分,
+		 * 	ApplicationContext实例会创建并配置所有的单例bean.通常情况下这是一件好事,因为这样在配置中的任何错误都会即可被发现(否
+		 * 	则的话可能要花几个小时甚至几天).而这个实例化的过程就是在finishBeanFactoryInitialization中完成的.
+		 * 		P164
+		 */
+		
 		// Iterate over a copy to allow for init methods which in turn register new bean definitions.
 		// While this may not be part of the regular factory bootstrap, it does otherwise work fine.
 		List<String> beanNames = new ArrayList<>(this.beanDefinitionNames); // beanDefinitionNames 存储bean定义名称列表

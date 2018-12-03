@@ -922,6 +922,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	@Override
 	public void addBeanPostProcessor(BeanPostProcessor beanPostProcessor) {
 		Assert.notNull(beanPostProcessor, "BeanPostProcessor must not be null");
+		
+		// 在这里保证了BeanPostProcessor的唯一性.
 		this.beanPostProcessors.remove(beanPostProcessor);
 		this.beanPostProcessors.add(beanPostProcessor);
 		if (beanPostProcessor instanceof InstantiationAwareBeanPostProcessor) {
