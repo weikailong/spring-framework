@@ -92,6 +92,11 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	 * @see #extendAdvisors
 	 */
 	protected List<Advisor> findEligibleAdvisors(Class<?> beanClass, String beanName) {
+
+		/**
+		 * 		对于指定的bean的增强方法获取一定是包含了两个步骤的,获取所有的增强以及寻找所有增强中适用于bean的增强并应用,那么findCandidateAdvisors
+		 * 	与findAdvisorsThatCanApply便是做了这两件事情.当然,如果无法找到对应的增强器便返回DO_NOT_PROXY,其中DO_NOT_PROXY=null.	
+		 */
 		List<Advisor> candidateAdvisors = findCandidateAdvisors();
 		List<Advisor> eligibleAdvisors = findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName);
 		// 向候选Advisor链的开头(也就是List.get(0)的位置)添加一个org.springframework.aop.support.DefaultPointcutAdvisor

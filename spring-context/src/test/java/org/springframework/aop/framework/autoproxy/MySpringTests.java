@@ -87,7 +87,16 @@ public class MySpringTests {
 		ac.publishEvent(event);
 
 	}
-	
+
+	@Test
+	public void testSpring5(){
+
+		ApplicationContext ac = new ClassPathXmlApplicationContext("spring/spring.xml");
+		MyTestBean test = (MyTestBean) ac.getBean("test");
+		test.test();
+
+
+	}
 	
 
 }

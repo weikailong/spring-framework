@@ -1,8 +1,20 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="GBK"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	   xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd  
+	    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd  
+	    http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.2.xsd  
+	    http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.2.xsd"
+		>
 
+	<aop:aspectj-autoproxy/>
+
+	<context:annotation-config />
+	<context:component-scan base-package="com.kaixin1928" />
+	
+	<bean id="customerService" class="com.kaixin1928.aop.CustomerServiceImpl"/>
+	<bean id="customerServiceInterceptor" class="com.kaixin1928.aop.CustomerServiceInterceptor"/>
 	
 	<bean id="myTestBean" class="com.kaixin1928.model.MyTestBean" />
 	
@@ -15,6 +27,10 @@
 	<bean id="testC" class="com.kaixin1928.model.TestC">
 		<property name="testA" ref="testA"/>
 	</bean>
+
+
+	<bean id="test" class="com.kaixin1928.model.MyTestBean"/>
+	<bean class="com.kaixin1928.model.AspectJTest" />
 	
 	<!--<bean class="org.springframework.beans.factory.config.MyInstantiationAwareBeanPostProcessor"/>-->
 	<bean id="testListener" class="com.kaixin1928.model.TestListener"/>

@@ -49,6 +49,11 @@ import org.springframework.util.Assert;
 @SuppressWarnings("serial")
 public class AnnotationAwareAspectJAutoProxyCreator extends AspectJAwareAdvisorAutoProxyCreator {
 
+	/**
+	 *		在类的层级中,我们看到AnnotationAwareAspectJAutoProxyCreator实现了BeanPostProcessor接口,而实现BeanPostProcessor后,当
+	 *	Spring加载这个Bean时会在实例化前调用其postProcessAfterInitialization方法,而我们对于AOP逻辑的分析也由此开始.	
+	 */
+
 	@Nullable
 	private List<Pattern> includePatterns;
 
@@ -88,9 +93,15 @@ public class AnnotationAwareAspectJAutoProxyCreator extends AspectJAwareAdvisorA
 
 	@Override
 	protected List<Advisor> findCandidateAdvisors() {
-		// Add all the Spring advisors found according to superclass rules.
+		
+		// 当使用注解方法配置AOP的时候并不是丢弃了对XML配置的支持,在这里调用父类方法加载配置文件中的AOP声明
 		List<Advisor> advisors = super.findCandidateAdvisors();
-		// Build Advisors for all AspectJ aspects in the bean factory.
+
+		/**
+		 * 		AnnotationAwareAspectJAutoProxyCreator间接继承了AbstractAdvisorAutoProxyCreator,在实现获
+		 * 	取增强的方法中除了保留父类的获取配置文件中定义的增强外,同时添加了获取Bean的注解增强的功能,那么其实现正
+		 * 	是由this.aspectJAdvisorsBuilder.buildAspectJAdvisors()来实现的.
+		 */
 		if (this.aspectJAdvisorsBuilder != null) {
 			advisors.addAll(this.aspectJAdvisorsBuilder.buildAspectJAdvisors());
 		}

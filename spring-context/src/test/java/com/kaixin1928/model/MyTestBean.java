@@ -15,4 +15,9 @@ public class MyTestBean {
 	public void setTestStr(String testStr) {
 		this.testStr = testStr;
 	}
+	
+	public void test(){
+		System.out.println("test");
+	}
+	
 }
