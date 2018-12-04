@@ -43,10 +43,18 @@ public class AspectJAfterAdvice extends AbstractAspectJAdvice
 
 	@Override
 	public Object invoke(MethodInvocation mi) throws Throwable {
+
+		/**
+		 * 		后置增强与前置增强有稍许不一致的地方.前值增强,大致的结构是在拦截器链中放置MethodBeforeAdviceInterceptor,而在
+		 * 	MethodBeforeAdviceInterceptor中又放置了AspectJMethodBeforeAdvice,并在调用invoke时首先串联调用.但是在后置增强的
+		 * 	时候却不一样,没有提供中间的类,而是直接在连接器链中使用了中间的AspectJAfterAdvice.
+		 */ 
+
 		try {
 			return mi.proceed();
 		}
 		finally {
+			//激活增强方法
 			invokeAdviceMethod(getJoinPointMatch(), null, null);
 		}
 	}

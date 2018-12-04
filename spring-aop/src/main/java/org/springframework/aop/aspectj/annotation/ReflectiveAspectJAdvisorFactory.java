@@ -133,7 +133,7 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 
 		List<Advisor> advisors = new LinkedList<>();
 		for (Method method : getAdvisorMethods(aspectClass)) {
-			// 普通增强器的获取
+			// 普通增强器的获取,实现步骤包括对切点的注解的获取也以及根据注解信息生成增强
 			Advisor advisor = getAdvisor(method, lazySingletonAspectInstanceFactory, advisors.size(), aspectName);
 			if (advisor != null) {
 				advisors.add(advisor);
@@ -149,6 +149,7 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 
 		// 获取DeclareParents注解
 		for (Field field : aspectClass.getDeclaredFields()) {
+			// DeclareParents主要用于引介增强的注解形式的实现,而其实现方式与普通增强很类似,只不过使用DeclareParentsAdvisor对功能进行封装
 			Advisor advisor = getDeclareParentsAdvisor(field);
 			if (advisor != null) {
 				advisors.add(advisor);
@@ -260,6 +261,10 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 			logger.debug("Found AspectJ method: " + candidateAdviceMethod);
 		}
 
+		/**
+		 * 		Spring会根据不同的注解生成不同的增强器,例如AtBefore会对应AspectJMethodBeforeAdvice,
+		 * 	而在AspectJMethodBeforeAdvice中完成了增强方法的逻辑.	
+		 */
 		AbstractAspectJAdvice springAdvice;
 
 		switch (aspectJAnnotation.getAnnotationType()) {
@@ -323,6 +328,8 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 	protected static class SyntheticInstantiationAdvisor extends DefaultPointcutAdvisor {
 
 		public SyntheticInstantiationAdvisor(final MetadataAwareAspectInstanceFactory aif) {
+			// 目标方法前调用,类似@Before
+			// 简单初始化aspect
 			super(aif.getAspectMetadata().getPerClausePointcut(), (MethodBeforeAdvice)
 					(method, args, target) -> aif.getAspectInstance());
 		}

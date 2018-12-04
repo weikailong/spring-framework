@@ -84,7 +84,12 @@ class InstantiationModelAwarePointcutAdvisorImpl
 			Method aspectJAdviceMethod, AspectJAdvisorFactory aspectJAdvisorFactory,
 			MetadataAwareAspectInstanceFactory aspectInstanceFactory, int declarationOrder, String aspectName) {
 
-		// TODO 隗凯隆 AOP
+		/**
+		 * 		在封装过程中只是简单的将信息封装在类的实例中,所有的信息单纯的赋值,在实例初始化的过程中还完成
+		 * 	了对于增强器的初始化.因为不同的增强所体现的逻辑是不同的,比如@Before("test()")与After("test()")
+		 * 	标签的不同就是增强器增强的位置不同,所以就需要不同的增强器来完成不同的逻辑,而根据注解中的信息初始化
+		 * 	对应的增强器就是在instantiateAdvice函数中实现的.
+		 */
 		
 		this.declaredPointcut = declaredPointcut;
 		this.declaringClass = aspectJAdviceMethod.getDeclaringClass();
