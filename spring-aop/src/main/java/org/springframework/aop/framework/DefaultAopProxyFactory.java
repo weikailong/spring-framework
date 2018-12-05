@@ -50,25 +50,28 @@ public class DefaultAopProxyFactory implements AopProxyFactory, Serializable {
 	public AopProxy createAopProxy(AdvisedSupport config) throws AopConfigException {
 
 		/**
-		 * 	平时我们说的AOP原理三句话就能概括:
-		 * 		1.对类生成代理使用CGLIB
-		 * 		2.对接口生成代理使用JDK原生的Proxy
-		 * 		3.可以通过配置文件指定对接口使用CGLIB生成代理
+		 * 	从if中的判断条件可以看到3个方面影响着Spring的判断:
+		 * 		* optimize: 用来控制通过CGLIB创建的代理是否使用基金的优化策略.除非完全了解AOP代理如何处理优化,否则不推荐用户使用这个设置.
+		 * 					目前这个属性仅用于CGLIB代理,对于JDK动态代理(缺省代理)无效.
+		 * 		
+		 * 		* proxyTargetClass: 这个属性为true时,目标类本身被代理而不是目标类的接口.如果这个属性值被设为true,CGLIB代理将被创建,设置
+		 * 							方式:<aop:aspectj-autoproxy proxy-target-class="true"/>
+		 * 						
+		 * 		* hasNoUserSuppliedProxyInterfaces:是否存在代理接口	
 		 * 	
-		 * 	这三句话的出处就是createAopProxy方法.默认是使用JDK自带的Proxy生成代理,碰到以下三种情况例外:
-		 * 		1.ProxyConfig的isOptimize方法为true,这表示让Spring自己去优化而不是用户指定
-		 * 		2.ProxyConfig的isProxyTargetClass方法为true,这表示配吹了proxy-target-class="true"
-		 * 		3.ProxyConfig满足hasNoUserSuppliedProxyInterfaces方法执行结果为true,表示<bean>对象没有实现任何接口或者实现的借口是SpringProxy接口
+		 * 	下面是对JDK与CGLIB方式的总结:
+		 * 		* 如果目标对象实现了接口,默认情况下会采用JDK的动态代理实现AOP.
+		 * 		* 如果目标对象实现了接口,可以强制使用CGLIB实现AOP.
+		 * 		* 如果目标对象没有实现接口,必须采用CGLIB库,Spring会自动在JDK动态代理和CGLIB之前转换.
 		 * 	
-		 * 	在进入if判断之后再根据目标<bean>的类型决定返回那种AopProxy,简单总结起来:
-		 * 		1.proxy-target-class没有配置或者proxy-target-class="false",返回JdkDynamicAopProxy
-		 * 		2.proxy-target-class="true"或者<bean>对象没有实现任何接口或者只实现了SpringProxy接口,返回Cglib2AopProxy.	
+		 * 	如何强制使用CGLIB实现AOP?
+		 * 		(1)	添加CGLIB库,Sping_HOME/cglib/*.jar
+		 * 		(2)	在Spring配置文件中加入<aop:aspectj-autoproxy paroxy-target-class="true"/>
 		 * 	
-		 * 	当然,不管是JdkDynamicAopProxy还是Cglib2AopProxy, AdvisedSupport都是作为构造函数参数传入的,里面存储了具体的Advisor
-		 * 	
+		 * 	JDK动态代理和CGLIB字节码生成的区别?
+		 * 		* JDK动态代理只能对实现了接口的类生成代理,而不能针对类.
+		 * 		* CGLIB是针对类实现代理,主要是对指定的类生成一个子类,覆盖其中的方法,因为是继承,所以该类或方法最好不要声明成final.
 		 */
-
-
 		if (config.isOptimize() || config.isProxyTargetClass() || hasNoUserSuppliedProxyInterfaces(config)) {
 			Class<?> targetClass = config.getTargetClass();
 			if (targetClass == null) {

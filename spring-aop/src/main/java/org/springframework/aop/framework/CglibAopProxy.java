@@ -174,10 +174,10 @@ class CglibAopProxy implements AopProxy, Serializable {
 				}
 			}
 
-			// Validate the class, writing log messages as necessary.
+			// 验证Class
 			validateClassIfNecessary(proxySuperClass, classLoader);
 
-			// Configure CGLIB Enhancer...
+			// 创建及配置Enhancer
 			Enhancer enhancer = createEnhancer();
 			if (classLoader != null) {
 				enhancer.setClassLoader(classLoader);
@@ -191,6 +191,10 @@ class CglibAopProxy implements AopProxy, Serializable {
 			enhancer.setNamingPolicy(SpringNamingPolicy.INSTANCE);
 			enhancer.setStrategy(new ClassLoaderAwareUndeclaredThrowableStrategy(classLoader));
 
+			/**
+			 * 	整个函数完成的阐述了一个创建Spring中的Enhancer的过程.这里最重要的是通过getCallBacks方法设置连接器链
+			 */
+			// 设置拦截器
 			Callback[] callbacks = getCallbacks(rootClass);
 			Class<?>[] types = new Class<?>[callbacks.length];
 			for (int x = 0; x < types.length; x++) {
@@ -218,6 +222,7 @@ class CglibAopProxy implements AopProxy, Serializable {
 	protected Object createProxyClassAndInstance(Enhancer enhancer, Callback[] callbacks) {
 		enhancer.setInterceptDuringConstruction(false);
 		enhancer.setCallbacks(callbacks);
+		// 生成代理类以及创建代理
 		return (this.constructorArgs != null && this.constructorArgTypes != null ?
 				enhancer.create(this.constructorArgTypes, this.constructorArgs) :
 				enhancer.create());
@@ -279,12 +284,22 @@ class CglibAopProxy implements AopProxy, Serializable {
 	}
 
 	private Callback[] getCallbacks(Class<?> rootClass) throws Exception {
-		// Parameters used for optimization choices...
+
+		/**
+		 * 		在getCallback中Spring考虑了很多情况,但是对于我们来说,只需要理解最常用的就可以了,比如将advised属性封装在DynamicAdvisedInterceptor
+		 * 	并加入在callbacks中,这么做的目的是什么呢,如何调用呢?我们了解到CGLIB中对于方法的连接是通过将自定义的拦截器(实现MethodInterceptor接口)加
+		 * 	入CallBack中并在调用代理时直接激活拦截器中的intercept方法来实现的,那么在getCallback中正是实现了这样一个目的,DynamicAdvisedInterceptor
+		 * 	继承自MethodInterceptor,加入Callback中后,在再次调用代理时会直接调用DynamicAdvisedInterceptor中的intercept方法,由此推断,对于CGLIB方式
+		 * 	实现的代理,其核心逻辑必然在DynamicAdvisedInterceptor中的intercept中.
+		 * 		P200
+		 */
+
+		// 对expose-proxy属性的处理
 		boolean exposeProxy = this.advised.isExposeProxy();
 		boolean isFrozen = this.advised.isFrozen();
 		boolean isStatic = this.advised.getTargetSource().isStatic();
 
-		// Choose an "aop" interceptor (used for AOP calls).
+		// 将拦截器封装在DynamicAdvisedInterceptor中
 		Callback aopInterceptor = new DynamicAdvisedInterceptor(this.advised);
 
 		// Choose a "straight to target" interceptor. (used for calls that are
@@ -307,6 +322,7 @@ class CglibAopProxy implements AopProxy, Serializable {
 				new StaticDispatcher(this.advised.getTargetSource().getTarget()) : new SerializableNoOp();
 
 		Callback[] mainCallbacks = new Callback[] {
+				// 将拦截器链加入Callback中
 				aopInterceptor,  // for normal advice
 				targetInterceptor,  // invoke target without considering advice, if optimized
 				new SerializableNoOp(),  // no override for methods mapped to this
@@ -671,24 +687,26 @@ class CglibAopProxy implements AopProxy, Serializable {
 				// Get as late as possible to minimize the time we "own" the target, in case it comes from a pool...
 				target = targetSource.getTarget();
 				Class<?> targetClass = (target != null ? target.getClass() : null);
+				// 获取拦截器链
 				List<Object> chain = this.advised.getInterceptorsAndDynamicInterceptionAdvice(method, targetClass);
 				Object retVal;
-				// Check whether we only have one InvokerInterceptor: that is,
-				// no real advice, but just reflective invocation of the target.
 				if (chain.isEmpty() && Modifier.isPublic(method.getModifiers())) {
-					// We can skip creating a MethodInvocation: just invoke the target directly.
-					// Note that the final invoker must be an InvokerInterceptor, so we know
-					// it does nothing but a reflective operation on the target, and no hot
-					// swapping or fancy proxying.
+					// 如果拦截器链为空则直接激活原方法
 					Object[] argsToUse = AopProxyUtils.adaptArgumentsIfNecessary(method, args);
 					retVal = methodProxy.invoke(target, argsToUse);
 				}
 				else {
-					// We need to create a method invocation...
+					// 进入链
 					retVal = new CglibMethodInvocation(proxy, target, method, args, targetClass, chain, methodProxy).proceed();
 				}
 				retVal = processReturnType(proxy, target, method, retVal);
 				return retVal;
+
+				/**
+				 * 		上述的实现方式与JDK方式实现代理中的invoke方法大同小异,都是首先构造链,然后封装此链进行串联调用,
+				 * 	稍有区别就是在JDK中直接构造ReflectiveMethodInvocation,而在cglib中使用CglibMethodInvocation. 
+				 * 	CglibMethodInvocation继承自ReflectiveMethodInvocation,但是proceed方法并没有重写.
+				 */
 			}
 			finally {
 				if (target != null && !targetSource.isStatic()) {
