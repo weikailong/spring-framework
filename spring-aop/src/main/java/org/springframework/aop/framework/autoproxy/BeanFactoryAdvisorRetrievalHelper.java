@@ -65,13 +65,23 @@ public class BeanFactoryAdvisorRetrievalHelper {
 	 * @see #isEligibleBean
 	 */
 	public List<Advisor> findAdvisorBeans() {
+
+		/**
+		 * 		对于上面的函数,首先通过BeanFactoryUtils类提供的工具方法获取所有对应Advisor.class的类,获取办法无非是使用ListableBeanFactory中
+		 * 	提供的方法: String[] getBeanNameForType(Class<?> type,boolean includeNonSingletons,boolean allowEagerInit);
+		 * 		而我们知道增强器在容器中的beanName时,获取增强器已经不是问题了,在BeanFactory中提供了这样的方法,可以帮我们快速定位对应的bean实例.
+		 * 		<T> T getBean(String name,Class<T> requiredType) throws BeansException;
+		 * 		在我们讲解自定义标签时曾经注册了一个类型为BeanFactoryTransactionAttributeSourceAdvisor的bean,而在此bean中我们又注入了另外两个
+		 * 	Bean,那么此时这个Bean就会被开始使用了.因为BeanFactoryTransactionAttribute SourceAdvisor同样也实现了Advisor接口,那么在获取所有增强
+		 * 	器时自然也会将此bean提出来,并随着其他增强器一起在后续的步骤中被织入代理.
+		 * 		P263
+		 */
+
 		// Determine list of advisor bean names, if not cached already.
 		String[] advisorNames = null;
 		synchronized (this) {
 			advisorNames = this.cachedAdvisorBeanNames;
 			if (advisorNames == null) {
-				// Do not initialize FactoryBeans here: We need to leave all regular beans
-				// uninitialized to let the auto-proxy creator apply to them!
 				advisorNames = BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
 						this.beanFactory, Advisor.class, true, false);
 				this.cachedAdvisorBeanNames = advisorNames;

@@ -252,6 +252,14 @@ public abstract class AopUtils {
 		}
 		classes.addAll(ClassUtils.getAllInterfacesForClassAsSet(targetClass));
 
+		/**
+		 * 		首先获取对应类的所有接口并连同类本身一起遍历,遍历过程中又对类中的方法再次遍历,一旦匹配成功便认为这个类适用于当前增强器.
+		 * 		这里我们不禁会有疑问,对于事务的配置不仅仅局限于在函数上配置,我们知道,在类接口上的配置可以延续到类中的每个函数,那么,如果
+		 * 	针对每个函数进行检测,在类本身上配置的事务属性岂不是检测不到了吗?我们继续探究matcher方法.
+		 * 		做匹配的时候methodMatcher.matches(method,targetClass)会使用TransactionAttributeSourcePointcut类的matches方法.
+		 * 		P265	
+		 */
+		
 		for (Class<?> clazz : classes) {
 			Method[] methods = ReflectionUtils.getAllDeclaredMethods(clazz);
 			for (Method method : methods) {
@@ -293,6 +301,15 @@ public abstract class AopUtils {
 			return ((IntroductionAdvisor) advisor).getClassFilter().matches(targetClass);
 		}
 		else if (advisor instanceof PointcutAdvisor) {
+
+			/**
+			 * 		当前我们分析的是对于UserService是否使用于此增强方法,那么当前的advisor就是之前查找出来的类型为BeanFactoryTransactionAttributeSourceAdvisor的
+			 * 	bean实例,而通过类的层次结果我们知道:BeanFactoryTransactionAttributeSourceAdvisor间接实现了PointcutAdvisor.因此,在canApply函数中的第二个if判断时
+			 * 	就会通过判断,会将BeanFactory TransactionAttributeSourceAdvisor中的getPointcut()方法返回值作为参数继续调用canApply方法,而getPoint()方法返回的是
+			 * 	TransactionAttributeSourcePointcut类型的实例.对于transactionAttributeSource这个属性,是在解析自定义标签时注入进去的.
+			 * 		P264
+			 */
+
 			PointcutAdvisor pca = (PointcutAdvisor) advisor;
 			return canApply(pca.getPointcut(), targetClass, hasIntroductions);
 		}

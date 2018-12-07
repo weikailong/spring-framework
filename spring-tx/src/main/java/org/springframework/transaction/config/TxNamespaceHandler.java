@@ -52,7 +52,14 @@ public class TxNamespaceHandler extends NamespaceHandlerSupport {
 
 	@Override
 	public void init() {
+
+		/**
+		 * 		TODO 事务分析,入口
+		 * 		<tx:annotation-driven/> 配置是事务的开关.
+		 */
+
 		registerBeanDefinitionParser("advice", new TxAdviceBeanDefinitionParser());
+		// 在遇到诸如<tx:annotation-driven 为开头的配置后,Spring会使用AnnotationDrivenBeanDefinitionParser类的parse方法进行解析.
 		registerBeanDefinitionParser("annotation-driven", new AnnotationDrivenBeanDefinitionParser());
 		registerBeanDefinitionParser("jta-transaction-manager", new JtaTransactionManagerBeanDefinitionParser());
 	}

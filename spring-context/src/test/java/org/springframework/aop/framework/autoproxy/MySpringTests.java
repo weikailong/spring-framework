@@ -27,6 +27,7 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.Assert.assertEquals;
 
@@ -88,14 +89,43 @@ public class MySpringTests {
 
 	}
 
+	private final Map<String, String> aliasMap = new ConcurrentHashMap<>(16);
+	
 	@Test
 	public void testSpring5(){
 
-		ApplicationContext ac = new ClassPathXmlApplicationContext("spring/spring.xml");
-		MyTestBean test = (MyTestBean) ac.getBean("test");
-		test.test();
+		String name = "A";
+		String alias = "B";
+		
+		aliasMap.put("A","C");
+		aliasMap.put("C","B");
 
+		checkForAliasCircle(name, alias);
+		
+		this.aliasMap.put(name, name);
 
+		System.out.println(aliasMap);
+	}
+
+	protected void checkForAliasCircle(String name, String alias) {
+		boolean b = hasAlias(alias, name);
+		System.out.println("校验结果:"+b);
+		if (b) {
+			throw new IllegalStateException("Cannot register alias '" + alias +
+					"' for name '" + name + "': Circular reference - '" +
+					name + "' is a direct or indirect alias for '" + alias + "' already");
+		}
+	}
+
+	public boolean hasAlias(String name, String alias) {
+		for (Map.Entry<String, String> entry : this.aliasMap.entrySet()) {
+			String registeredName = entry.getValue();
+			if (registeredName.equals(name)) {
+				String registeredAlias = entry.getKey();
+				return (registeredAlias.equals(alias) || hasAlias(registeredAlias, alias));
+			}
+		}
+		return false;
 	}
 	
 
