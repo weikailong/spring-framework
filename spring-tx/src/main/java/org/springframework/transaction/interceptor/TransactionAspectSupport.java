@@ -487,7 +487,22 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 	protected TransactionInfo createTransactionIfNecessary(@Nullable PlatformTransactionManager tm,
 			@Nullable TransactionAttribute txAttr, final String joinpointIdentification) {
 
+		/**
+		 * 	对于createTransactionIfNecessary函数主要做了这样几件事
+		 * 		(1)	使用DelegatingTransactionAttribute封装传入的TransactionAttribute实例.
+		 * 				对于传入的TransactionAttribute类型的参数txAttr,当前的实际类型是RuleBasedTransactionAttribute,是由获取事务
+		 * 			属性时生成,主要用于数据承载,而这里之所以使用DelegatingTransactionAttribute进行封装,当然是为了提供更多的功能.
+		 * 		
+		 * 		(2)	获取事务
+		 * 			事务处理当然是以事务为核心,那么获取事务就是最重要的事情.
+		 * 		
+		 * 		(3)	构建事务信息
+		 * 			根据之前几个步骤获取的信息构建TransactionInfo并返回.	
+		 * 		P272	
+		 */
+		
 		// If no name specified, apply method identification as transaction name.
+		// 如果没有名称指定则使用方法唯一标识,并使用DelegateTransactionAttribute封装txAttr
 		if (txAttr != null && txAttr.getName() == null) {
 			txAttr = new DelegatingTransactionAttribute(txAttr) {
 				@Override
@@ -500,6 +515,7 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 		TransactionStatus status = null;
 		if (txAttr != null) {
 			if (tm != null) {
+				// 获取TransactionStatus
 				status = tm.getTransaction(txAttr);
 			}
 			else {
@@ -509,6 +525,7 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 				}
 			}
 		}
+		// 根据指定的属性与status准备一个TransactionInfo
 		return prepareTransactionInfo(tm, txAttr, joinpointIdentification, status);
 	}
 
@@ -524,13 +541,19 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 			@Nullable TransactionAttribute txAttr, String joinpointIdentification,
 			@Nullable TransactionStatus status) {
 
+		/**
+		 * 	当已经建立事务连接并完成了事务信息的提取后,我们需要将所有的事务信息统一记录在TransactionInfo类型的实例中,这个实例包
+		 * 	含了目标方法开始前的所有状态信息,一旦事务执行失败,Spring会通过TransactionInfo类型的实例中的信息来进行回滚等后续操作.
+		 * 		P281
+		 */
+		
 		TransactionInfo txInfo = new TransactionInfo(tm, txAttr, joinpointIdentification);
 		if (txAttr != null) {
 			// We need a transaction for this method...
 			if (logger.isTraceEnabled()) {
 				logger.trace("Getting transaction for [" + txInfo.getJoinpointIdentification() + "]");
 			}
-			// The transaction manager will flag an error if an incompatible tx already exists.
+			// 记录事务状态
 			txInfo.newTransactionStatus(status);
 		}
 		else {

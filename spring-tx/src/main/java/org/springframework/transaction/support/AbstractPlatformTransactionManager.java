@@ -339,6 +339,25 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 */
 	@Override
 	public final TransactionStatus getTransaction(@Nullable TransactionDefinition definition) throws TransactionException {
+
+		/**
+		 * 		当然,在Spring中每个复杂的功能实现,并不是一次完成的,而是会通过入口函数进行一个框架的搭建,初步构建完整的逻辑,而将实现细节
+		 * 	分摊给不同的函数.那么,让我们看看实物的准备工作都包括哪些.
+		 * 		(1)	获取事务
+		 * 				创建对应的事务实例,这是使用的是DataSourceTransactionManager中的doGetTransaction方法,创建基于JDBC的事务实
+		 * 			例.如果当前线程中存在关于dataSource的连接,那么直接使用.这里有一个对保存点的设置,是否开启允许保存点取决于是否设置了
+		 * 			允许嵌入式事务.
+		 * 		
+		 * 		(2)	如果当线程存在事务,则转向嵌套事务的处理
+		 * 		(3)	事务超时设置验证
+		 * 		(4)	事务propagationBehavior属性的设置验证
+		 * 		(5)	构建DefaultTransactionStatus.
+		 * 		(6)	完善transaction,包括设置ConnectionHolder,隔离级别,timeout,如果是新连接,则绑定到当前线程
+		 * 				对于一些隔离级别,timeout等功能的设置并不是由Spring来完成的,而是委托给底层的数据库连接去做的,而对于数据库连接
+		 * 			的设置就是在doBegin函数中处理的.	
+		 * 		P274	
+		 */
+
 		Object transaction = doGetTransaction();
 
 		// Cache debug flag to avoid repeated checks.
@@ -349,24 +368,27 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			definition = new DefaultTransactionDefinition();
 		}
 
+		// 判断当前线程是存在事务,判断依据为当前线程记录的连接不为空且连接中(connectionHolder)中的transactionActive属性不为空
 		if (isExistingTransaction(transaction)) {
-			// Existing transaction found -> check propagation behavior to find out how to behave.
+			// 当前线程存在事务
 			return handleExistingTransaction(definition, transaction, debugEnabled);
 		}
 
-		// Check definition settings for new transaction.
+		// 事务超时设置验证
 		if (definition.getTimeout() < TransactionDefinition.TIMEOUT_DEFAULT) {
 			throw new InvalidTimeoutException("Invalid transaction timeout", definition.getTimeout());
 		}
 
-		// No existing transaction found -> check propagation behavior to find out how to proceed.
+		// 如果当前线程不存在事务,但是propagationBehavior却被声明为PROPAGATION_MANDATORY抛出异常
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_MANDATORY) {
 			throw new IllegalTransactionStateException(
 					"No existing transaction found for transaction marked with propagation 'mandatory'");
 		}
+		// PROPAGATION_REQUIRED,PROPAGATION_REQUIRES_NEW,PROPAGATION_NESTED都需要新建事务
 		else if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRED ||
 				definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW ||
 				definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
+			// 空挂起
 			SuspendedResourcesHolder suspendedResources = suspend(null);
 			if (debugEnabled) {
 				logger.debug("Creating new transaction with name [" + definition.getName() + "]: " + definition);
@@ -375,8 +397,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
 				DefaultTransactionStatus status = newTransactionStatus(
 						definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
+
+				// 构造transaction,包括设置ConnectionHolder,隔离级别,timeout.如果是新连接,绑定到当前线程.
 				doBegin(transaction, definition);
+				
+				// 新同步事务的设置,针对于当前线程的设置
 				prepareSynchronization(status, definition);
+				
 				return status;
 			}
 			catch (RuntimeException | Error ex) {
@@ -402,6 +429,22 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			TransactionDefinition definition, Object transaction, boolean debugEnabled)
 			throws TransactionException {
 
+		/**
+		 * 		之前讲述了普通事务简历的过程,但是Spring中支持多种事务的传播规则,比如PROPAGATION_NESTED,PROPAGATION_REQUIRES_NEW等,
+		 * 	这些都是在已经存在事务的基础上进行进一步的处理,那么,对于已经存在的事务,准备操作时如何进行的呢?
+		 * 	
+		 * 		对于已经存在事务的处理过程中,我们看到了很多熟悉的操作,但是,也有些不同的地方,函数中对于已经存在的事务处理考虑两种情况.
+		 * 		
+		 * 		(1) PROPAGATION_REQUIRES_NEW 表示当前方法必须在它自己的事务里运行,一个新的事务将被启动,而如果有一个事务正在运行的话,则在这个方法运行期间被挂起.而Spring
+		 * 			中对于此种传播方式的处理与新事物建立最大的不同点在于使用suspend方法将原事务挂起.将信息挂起的目的当然是为了在当前事务执行完毕后再将原事务还原.
+		 * 		
+		 * 		(2)	PROPAGATION_NESTED 表示如果当前正在有一个事务在运行中,则该方法应该运行在一个嵌套的事务中,被嵌套的事务可以独立于封装事务进行提交或者回滚,如果封装事务
+		 * 			不存在,行为就像PROPAGATION_REQUIRES_NEW.对于嵌入式事务的处理,Spring中主要考虑了两种方式的处理.
+		 * 				*	Spring中允许嵌入事务的时候,则首选设置保存点的方式作为异常处理的回滚.
+		 * 				*	对于其他方式,比如JTA无法使用保存点的方式,那么处理方式与PROPAGATION_REQUIRES_NEW相同,而一旦出现异常,则由Spring的事务处理机制去完成后续操作.
+		 * 		P279	
+		 */
+		
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NEVER) {
 			throw new IllegalTransactionStateException(
 					"Existing transaction found for transaction marked with propagation 'never'");
@@ -422,6 +465,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				logger.debug("Suspending current transaction, creating new transaction with name [" +
 						definition.getName() + "]");
 			}
+			// 新事务的建立; 对于挂起操作的主要目的是记录原有事务的状态,以便于后续操作对事务的恢复.
 			SuspendedResourcesHolder suspendedResources = suspend(transaction);
 			try {
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
@@ -437,6 +481,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			}
 		}
 
+		// 嵌入式事务的处理
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
 			if (!isNestedTransactionAllowed()) {
 				throw new NestedTransactionNotSupportedException(
@@ -447,9 +492,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				logger.debug("Creating nested transaction with name [" + definition.getName() + "]");
 			}
 			if (useSavepointForNestedTransaction()) {
-				// Create savepoint within existing Spring-managed transaction,
-				// through the SavepointManager API implemented by TransactionStatus.
-				// Usually uses JDBC 3.0 savepoints. Never activates Spring synchronization.
+				// 如果没有可以使用保存点的方式控制事务的回滚,那么在嵌入式事务的建立初始建立保存点
 				DefaultTransactionStatus status =
 						prepareTransactionStatus(definition, transaction, false, false, debugEnabled, null);
 				status.createAndHoldSavepoint();
@@ -491,6 +534,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				}
 			}
 		}
+		// 有些情况是不能使用保存点操作,比如JTA,那么建立新事务
 		boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
 		return prepareTransactionStatus(definition, transaction, false, newSynchronization, debugEnabled, null);
 	}
