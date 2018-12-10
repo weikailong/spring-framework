@@ -577,6 +577,17 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 	 * @param txInfo information about the current transaction
 	 */
 	protected void commitTransactionAfterReturning(@Nullable TransactionInfo txInfo) {
+
+		/**
+		 * 		在真正的数据提交之前,还需要做个判断.在我们分析事务异常处理规则的时候,当某个事务既没有保存点又不是新事务,Spring对它的处理
+		 * 	方式只是设置一个回滚标识.这个回滚标识在这里就会排上用场了,主要的应用场景如下:
+		 * 		某个事务是另一个事务的嵌入事务,但是,这些事务又不在Spring的管理范围内,或者无法设置保存点,那么Spring会通过设置回滚标识的方
+		 * 	式来禁止提交.首先当某个嵌入事务发生回滚的时候回设置回滚标识,而等到外部事务提交时,一旦判断出现当前事务流被设置了回滚标识,则由外
+		 * 	部事务来统一进行整体事务的回滚.
+		 * 		所以,当事务没有被异常不过的时候也并不意味着一定会执行提交的过程.
+		 * 	P287	
+		 */
+
 		if (txInfo != null && txInfo.getTransactionStatus() != null) {
 			if (logger.isTraceEnabled()) {
 				logger.trace("Completing transaction for [" + txInfo.getJoinpointIdentification() + "]");

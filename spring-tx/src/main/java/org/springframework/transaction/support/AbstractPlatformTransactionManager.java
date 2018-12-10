@@ -739,6 +739,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 		}
 
 		DefaultTransactionStatus defStatus = (DefaultTransactionStatus) status;
+		// 如果在事务链中已经被标记回滚,那么不会尝试提交事务,直接回滚
 		if (defStatus.isLocalRollbackOnly()) {
 			if (defStatus.isDebug()) {
 				logger.debug("Transactional code has requested rollback");
@@ -755,6 +756,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			return;
 		}
 
+		// 处理事务提交
 		processCommit(defStatus);
 	}
 
@@ -765,13 +767,29 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 * @throws TransactionException in case of commit failure
 	 */
 	private void processCommit(DefaultTransactionStatus status) throws TransactionException {
+
+		/**
+		 * 		在提交过程中也并不是直接提交的,而是考虑了诸多的方面,符合提交条件如下.
+		 * 			* 当事务状态中有保存点信息的话便不会去提交事务
+		 * 			* 当事务非新事务的时候也不会去执行提交事务操作
+		 * 		此条件主要考虑内嵌事务的情况,对于内嵌事务,在Spring中正常的处理方式是将内嵌事务开始之前设置保存点,一旦内嵌事务出现异常便
+		 * 	根据保存点信息进行回滚,但是如果没有出现异常,内嵌事务并不会单独提交,而是根据事务流由最外层事务负责提交,所以如果当前存在保存点
+		 * 	信息便不是最外层事务,不做保存操作,对于是否是新事务的判断也是基于此考虑.
+		 * 		如果程序流通过了事务的层层把关,最后顺利的进入了提交流程,那么同样,Spring会将事务提交的操作引导至底层数据库连接的API,进行
+		 * 	事务的提交.
+		 * 	P290
+		 */
+
 		try {
 			boolean beforeCompletionInvoked = false;
 
 			try {
 				boolean unexpectedRollback = false;
+				// 预留
 				prepareForCommit(status);
+				// 添加的TransactionSynchronization中的对应方法的调用
 				triggerBeforeCommit(status);
+				// 添加的TransactionSynchronization中的对应方法的调用
 				triggerBeforeCompletion(status);
 				beforeCompletionInvoked = true;
 
@@ -780,6 +798,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 						logger.debug("Releasing transaction savepoint");
 					}
 					unexpectedRollback = status.isGlobalRollbackOnly();
+					// 如果存在保存点则清除保存点信息
 					status.releaseHeldSavepoint();
 				}
 				else if (status.isNewTransaction()) {
@@ -787,6 +806,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 						logger.debug("Initiating transaction commit");
 					}
 					unexpectedRollback = status.isGlobalRollbackOnly();
+					// 如果是独立的事务则直接提交
 					doCommit(status);
 				}
 				else if (isFailEarlyOnGlobalRollbackOnly()) {
@@ -817,8 +837,10 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			}
 			catch (RuntimeException | Error ex) {
 				if (!beforeCompletionInvoked) {
+					// 添加的TransactionSynchronization中的对应方法的调用
 					triggerBeforeCompletion(status);
 				}
+				// 提交过程中出现异常则回滚
 				doRollbackOnCommitException(status, ex);
 				throw ex;
 			}
@@ -826,6 +848,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			// Trigger afterCommit callbacks, with an exception thrown there
 			// propagated to callers but the transaction still considered as committed.
 			try {
+				// 添加的TransactionSynchronization中的对应方法的调用
 				triggerAfterCommit(status);
 			}
 			finally {
