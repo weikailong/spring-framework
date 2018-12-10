@@ -131,6 +131,15 @@ public class DefaultTransactionAttribute extends DefaultTransactionDefinition im
 	 */
 	@Override
 	public boolean rollbackOn(Throwable ex) {
+
+		/**
+		 * 		默认情况下Spring中的事务异常处理机制只对RuntimeException和Error两种情况感兴趣,当然可以通过扩展来改变,不过,
+		 * 	我们最常用的还是使用事务提供的属性设置,利用注解方式的使用,例如:
+		 * 		@Transactional(propagation=Propagation.REQUIRED,rollbackFor=Exception.class)
+		 * 	
+		 * 	P283
+		 */
+
 		return (ex instanceof RuntimeException || ex instanceof Error);
 	}
 

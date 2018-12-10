@@ -592,13 +592,24 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 	 * @param ex throwable encountered
 	 */
 	protected void completeTransactionAfterThrowing(@Nullable TransactionInfo txInfo, Throwable ex) {
+		// 当抛出异常时首先判断当前是否存在事务,这是基础依据
 		if (txInfo != null && txInfo.getTransactionStatus() != null) {
 			if (logger.isTraceEnabled()) {
 				logger.trace("Completing transaction for [" + txInfo.getJoinpointIdentification() +
 						"] after exception: " + ex);
 			}
+
+			/**
+			 * 	在对目标方法的执行过程中,一旦出现Throwable就会被引导至此方法处理,但是并不代表所有的Throwable都会被回滚
+			 * 	处理,比如我们最常用的Exception,默认是不会被处理的.默认情况下,即使出现异常,数据也会被正常提交,而这个关
+			 * 	键就是在txInfo.transactionAttribute.rollbackOn(ex)这个函数.
+			 * 	P282
+			 */
+
+			// 这里判断是否回滚默认的依据是抛出的异常是否是RuntimeException或者是Error的类型
 			if (txInfo.transactionAttribute != null && txInfo.transactionAttribute.rollbackOn(ex)) {
 				try {
+					// 根据TransactionStatus信息进行回滚处理
 					txInfo.getTransactionManager().rollback(txInfo.getTransactionStatus());
 				}
 				catch (TransactionSystemException ex2) {
@@ -612,8 +623,7 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 				}
 			}
 			else {
-				// We don't roll back on this exception.
-				// Will still roll back if TransactionStatus.isRollbackOnly() is true.
+				// 如果不满足回滚条件即使抛出异常也同样会提交
 				try {
 					txInfo.getTransactionManager().commit(txInfo.getTransactionStatus());
 				}

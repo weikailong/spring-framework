@@ -847,6 +847,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 */
 	@Override
 	public final void rollback(TransactionStatus status) throws TransactionException {
+		// 如果事务已经完成,那么再次回滚会抛出异常
 		if (status.isCompleted()) {
 			throw new IllegalTransactionStateException(
 					"Transaction is already completed - do not call commit or rollback more than once per transaction");
@@ -863,22 +864,48 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 * @throws TransactionException in case of rollback failure
 	 */
 	private void processRollback(DefaultTransactionStatus status, boolean unexpected) {
+
+		/**
+		 * 		同样,对于在Spring中的复杂的逻辑处理过程,在入口函数一般都会给出个整体的处理脉络,而把实现细节委托给其它函数去执行.
+		 * 	我们尝试总结下Spring中对于回滚处理的大致脉络如下.
+		 * 		(1)	首先是自定义触发器的调用,包括在回滚前,完成回滚后的调用,当然完成回滚包括正常回滚与回滚过程中出现异常,自定义的
+		 * 	触发器会根据这些信息做进一步的处理,而对于触发器的注册,常见的是在回调过程中通过TransactionSynchronizationManager类中
+		 * 	的静态方法直接注册:
+		 * 		public static void registerSynchronization(TransactionSynchronization synchronization)
+		 * 	
+		 * 		(2)	除了触发监听函数外,就是真正的回滚逻辑处理了.
+		 * 				* 当之前已经保存的事务信息中尊保存点信息的时候,使用保存点信息进行回滚.常用于
+		 * 				  嵌入式事务,对于嵌入式的事务的处理,内嵌的事务异常并不会引起外部事务的回滚.
+		 * 			根据保存点回滚的逻辑的实现方式其实是根据底层的数据库连接进行的.
+		 * 				
+		 * 				* 当之前已经保存的事务信息中的事务为新事务,那么直接回滚.常用于单独事务的处理.对于没有保存点的回滚,Spring
+		 * 				  同样是使用底层数据库连接提供的API来操作的.由于我们使用的是DataSourceTransactionManager,那么doRollback
+		 * 				  函数会使用此类中的实现.
+		 * 				 
+		 * 				* 当事务信息中表明是存在事务的,又不属于以上两种情况,多数用于JTA,只做回滚标识,等到提交的时候统一不提交.
+		 * 		
+		 * 		P284	
+		 */
+
 		try {
 			boolean unexpectedRollback = unexpected;
 
 			try {
+				// 激活所有TransactionSynchronization中对应的方法
 				triggerBeforeCompletion(status);
 
 				if (status.hasSavepoint()) {
 					if (status.isDebug()) {
 						logger.debug("Rolling back transaction to savepoint");
 					}
+					// 如果有保存点,也就是当前事务为单独的线程则会退到保存点
 					status.rollbackToHeldSavepoint();
 				}
 				else if (status.isNewTransaction()) {
 					if (status.isDebug()) {
 						logger.debug("Initiating transaction rollback");
 					}
+					// 如果当前的事务为独立的新事物,则直接回退
 					doRollback(status);
 				}
 				else {
@@ -888,6 +915,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 							if (status.isDebug()) {
 								logger.debug("Participating transaction failed - marking existing transaction as rollback-only");
 							}
+							// 如果当前事务不是独立的事务,那么只能标记状态,等到事务链执行完毕后统一回滚
 							doSetRollbackOnly(status);
 						}
 						else {
@@ -910,6 +938,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				throw ex;
 			}
 
+			// 激活所有TransactionSynchronization中对应的方法
 			triggerAfterCompletion(status, TransactionSynchronization.STATUS_ROLLED_BACK);
 
 			// Raise UnexpectedRollbackException if we had a global rollback-only marker
@@ -919,6 +948,8 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			}
 		}
 		finally {
+			// 回滚后的信息清除.对于回滚逻辑执行结束后,无论回滚是否成功,都必须要做的事情就是事务结束后的收尾工作.
+			// 清空记录的资源并将挂起的资源恢复
 			cleanupAfterCompletion(status);
 		}
 	}
@@ -1043,6 +1074,17 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 * @see #doCleanupAfterCompletion
 	 */
 	private void cleanupAfterCompletion(DefaultTransactionStatus status) {
+
+		/**
+		 * 	从函数中得知,事务处理的收尾处理工作包含如下内容.
+		 * 		(1)	设置状态是对事务信息做完成标识以避免重复调用.
+		 * 		(2)	如果当前事务是新的同步状态,需要将绑定到当前线程的事务信息清除.
+		 * 		(3)	如果是新事务需要做些清除资源的工作
+		 * 	
+		 * 	P286
+		 */
+
+		// 设置完成状态
 		status.setCompleted();
 		if (status.isNewSynchronization()) {
 			TransactionSynchronizationManager.clear();
@@ -1055,6 +1097,8 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				logger.debug("Resuming suspended transaction after completion of inner transaction");
 			}
 			Object transaction = (status.hasTransaction() ? status.getTransaction() : null);
+			// 如果在事务执行前有事务挂起,那么当前事务执行结束后需要将挂起事务恢复
+			// 结束之前事务的挂起状态
 			resume(transaction, (SuspendedResourcesHolder) status.getSuspendedResources());
 		}
 	}
