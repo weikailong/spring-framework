@@ -157,6 +157,22 @@ import org.springframework.web.util.WebUtils;
 @SuppressWarnings("serial")
 public class DispatcherServlet extends FrameworkServlet {
 
+	/**
+	 * 		在servlet初始化阶段会调用其init方法,所以我们首先要查看在DispatcherServlet中是否重写了init方法.我们在其父类HttpServletBean
+	 * 	中可以找到init()方法.
+	 * 		DispatchServlet的初始化过程主要是通过将当前的servlet类型的实例转换为BeanWrapper类型实例,以便使用Spring中提供的注入功能进行
+	 * 	对应属性的注入.这些属性如contextAttribute,contextClass,nameSpace,contextConfigLocation等,都可以在web.xml文件中以初始化参数的
+	 * 	方式配置在servlet的声明中.DispatcherServlet继承自FrameworkServlet,FrameworkServlet类上包含对应的同名属性,Spring会保证这些参数
+	 * 	被注入到对应的值中.属性注入主要包含以下几个步骤.
+	 * 		1.封装及验证初始化参数
+	 * 		2.将当前servlet实例转换成BeanWrapper实例
+	 * 		3.注册对于Resource的属性编辑器
+	 * 		4.属性注入
+	 * 		5.servletBean的初始化
+	 * 		
+	 * 	P302
+	 */
+
 	/** Well-known name for the MultipartResolver object in the bean factory for this namespace. */
 	public static final String MULTIPART_RESOLVER_BEAN_NAME = "multipartResolver";
 
@@ -495,14 +511,31 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * <p>May be overridden in subclasses in order to initialize further strategy objects.
 	 */
 	protected void initStrategies(ApplicationContext context) {
+		// (1) 初始化MultipartResolver
 		initMultipartResolver(context);
+		
+		// (2) 初始化LocaleResolver
 		initLocaleResolver(context);
+		
+		// (3) 初始化ThemeResolver
 		initThemeResolver(context);
+		
+		// (4) 初始化HandlerMappings
 		initHandlerMappings(context);
+		
+		// (5) 初始化HandlerAdapter
 		initHandlerAdapters(context);
+		
+		// (6) 初始化HandlerExceptionResolvers
 		initHandlerExceptionResolvers(context);
+		
+		// (7) 初始化RequestToViewNameTranslator
 		initRequestToViewNameTranslator(context);
+		
+		// (8) 初始化ViewResolvers
 		initViewResolvers(context);
+		
+		// (9) 初始化FlashMapManager
 		initFlashMapManager(context);
 	}
 
@@ -512,7 +545,28 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * no multipart handling is provided.
 	 */
 	private void initMultipartResolver(ApplicationContext context) {
+
+		/**
+		 * 	(1) 初始化MultipartResolver
+		 * 			在Spring中,MultipartResolver主要用来处理文件上传.默认情况下,Spring是没有multipart处理的,因为一些开发者想要自己
+		 * 		处理它们.如果想使用Spring的multipart,则需要在Web应用的上下文中添加multipart解析器.这样,每个请求就会被检查是否包含multipart.
+		 * 		然而,如果请求中包含multipart,那么上下文中定义的MultipartResolver就会解析它,这样请求中的multipart属性就会像其他属性
+		 * 		一样被处理.常用配置如下:
+		 * 			<bean id="multipartResolver" class="org.Springframework.web.multipart.commons.CommonsMultipartResolver">
+		 * 			 	<!-- 该属性用来配置可上传文件的最大byte数 -->   
+		 * 				<property name="maximumFileSize"><value>100000</value></property>
+		 * 			</bean>	
+		 * 			当然,CommonsMultipartrResolver还提供了其它功能用于帮助用户完成上传功能,有兴趣可以进一步查看.
+		 * 			那么MultipartResolver就是在initMultipartResolver中被加入到DispatcherServlet中的.
+		 * 		
+		 * 	P309	
+		 */
+
 		try {
+			/**
+			 * 		因为之前的步骤已经完成了Spring中配置文件的解析,所以在这里只要在配置文件注册过都可以通过ApplicationContext
+			 * 	提供的getBean方法来直接获取对应bean,进而初始化MultipartResolver中的multipartResolver变量.
+			 */
 			this.multipartResolver = context.getBean(MULTIPART_RESOLVER_BEAN_NAME, MultipartResolver.class);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Using MultipartResolver [" + this.multipartResolver + "]");
@@ -534,7 +588,32 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * we default to AcceptHeaderLocaleResolver.
 	 */
 	private void initLocaleResolver(ApplicationContext context) {
+
+		/**
+		 * 	在Spring的国际化配置中一共有3中使用方式.
+		 * 		* 基于URL参数的配置
+		 * 				通过URL参数来控制国际化,比如你在页面上加上一句<a href="?locale=zh_CN">简体中文</a>来控制项目中使用的国际化
+		 * 			参数	.而提供这个功能的就是AcceptHeaderLocaleResolver,默认的参数名为locale,注意大小写.里面放的就是你的提交参数,
+		 * 			比如en_US,zh_CN之类的,具体配置如下:
+		 * 				<bean id="localeResolver" class="org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver" />
+		 * 		
+		 * 		* 基于session的配置
+		 * 				它通过校验用户会话中预置的属性来解析区域.最常用的是根据用户本次会话过程中的语言设定决定语言种类(例如,用户登录时
+		 * 			选择	语言种类,则此次登录周期内统一使用此语言设定),如果该会话属性不存在,它会根据accept-language HTTP头部确定默认区域.
+		 * 				<bean id="localeResolver" class="org.Springframework.web.servlet.i18n.SessionLocaleResolver" />
+		 * 		
+		 * 		* 基于Cookie的国际化配置
+		 * 				CookieLocaleResolver用于通过浏览器的cookie设置取的locale对象.这种策略在应用程序不支持会话或者状态必须保存在客户
+		 * 			端时有用,配置如下:
+		 * 				<bean id="localeResolver" class="org.Springframework,web.servlet.i18n.CookieLocaleResolver" />	
+		 * 				
+		 * 		这三种方式都可以解决国际化的问题,但是,对于LocaleResolver的使用基础是在DispatcherServlet中的初始化.
+		 * 	
+		 * 	P309
+		 */
+
 		try {
+			// 提取配置文件中的LocaleResolver来初始化DispatchServlet中的localeResolver属性.
 			this.localeResolver = context.getBean(LOCALE_RESOLVER_BEAN_NAME, LocaleResolver.class);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Using LocaleResolver [" + this.localeResolver + "]");
@@ -556,6 +635,39 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * we default to a FixedThemeResolver.
 	 */
 	private void initThemeResolver(ApplicationContext context) {
+
+		/**
+		 * 	(3)	初始化ThemeResolver
+		 * 			在Web开发中经常会遇到通过主题Theme来控制网页风格,这将进一步改善用户体验.简单的说,一个主题就是一组静态资源(比如
+		 * 		样式表和图片),他们可以影响应用程序的视觉效果.Spring中的主题功能和国际化功能非常相似.构成Spring主题功能主要包括如下内容:
+		 *		
+		 *		* 主题资源
+		 *				org.Springframework.ui.context.ThemeSource是Spring中主题资源的接口,Spring的主题需要通过ThemeSource接口来实现
+		 *			存放主题信息的资源.	
+		 *				org.Springframework.ui.context.support.ResourceBundleThemeSource是ThemeSource接口默认实现类(也就是通过ResourceBundle
+		 *			资源的方式定义主题),在Spring中的配置如下:
+		 *				<bean id="themeSource" class="org.Springframework.ui.context.support.ResourceBundleThemeSource" />	
+		 *					<property name="basenamePrefix" value="com.test. "></property>
+		 *				</bean>	
+		 *				默认状态下是在类路径根目录下查找相应的资源文件,也可以通过basenamePrefix来制定.这样,DispatchServlet就会在com.test包下查找资源文件.
+		 *		
+		 *		* 主题解析器
+		 *			ThemeSource定义了一些主题资源,那么不同的用户使用什么主题资源由谁定义呢?
+		 *			org.Springframework.web.servlet.ThemeResolver是主题解析器的接口,主题解析器的工作便是由它的子类来完成.
+		 *			对于主题解析器的子类主要有三个比较常见的实现.以主题文件summer.properties为例.
+		 *				1) FixedThemeResolver用于选择一个固定的主题.
+		 *				2) CookieThemeResolver用于实现用户所选的主题,以cookie的形式存放在客户端的机器上.
+		 *				3) SessionThemeResolver用于主题保存在用户的HTTP Session中.
+		 *			
+		 *		* 拦截器
+		 *			如果需要根据用户请求来改变主题,那么Spring提供了一个已经实现的拦截器ThemeChangeInterceptor拦截器.
+		 *		
+		 *		了解了主题文件的简单实用方式后,再来查看解析器的初始化工作,与其它变量的初始化工作相同,主题文件解析器的初始化
+		 *		工作并没有任何特别需要说明的地方.
+		 *	
+		 *	P310	
+		 */
+
 		try {
 			this.themeResolver = context.getBean(THEME_RESOLVER_BEAN_NAME, ThemeResolver.class);
 			if (logger.isDebugEnabled()) {

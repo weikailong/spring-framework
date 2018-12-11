@@ -151,13 +151,26 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 		}
 
 		// Set bean properties from init parameters.
+		// 1. 封装及验证初始化参数
+		// 解析init-param并封装至pvs中
 		PropertyValues pvs = new ServletConfigPropertyValues(getServletConfig(), this.requiredProperties);
 		if (!pvs.isEmpty()) {
 			try {
+				// 2. 将当前servlet实例转化为BeanWrapper实例
+				// PropertyAccessorFactory.forBeanPropertyAccess是Spring中提供的工具方法,主要用于将指定实例转化为Spring中可以处理的BeanWrapper类型的实例.
+				// 将当前的这个Servlet类转化为一个BeanWrapper,从而能够从Spring的方式来对init-param的值进行注
 				BeanWrapper bw = PropertyAccessorFactory.forBeanPropertyAccess(this);
 				ResourceLoader resourceLoader = new ServletContextResourceLoader(getServletContext());
+				// 3.注册相对于Resource的属性编辑器
+				// 注册自定义属性编辑器,一旦遇到Resource类型的属性将会使用ResourceEditor进行解析
 				bw.registerCustomEditor(Resource.class, new ResourceEditor(resourceLoader, getEnvironment()));
+				// 空实现,留给子类覆盖
 				initBeanWrapper(bw);
+				/**
+				 * 		BeanWrapper为Spring中的方法,支持Spring的自动注入.其实我们最常用的属性注入
+				 * 	无非是contextAttribute,contextClass,nameSpace,contextConfigLocation等属性.
+				 */
+				// 4.属性注入
 				bw.setPropertyValues(pvs, true);
 			}
 			catch (BeansException ex) {
@@ -169,6 +182,8 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 		}
 
 		// Let subclasses do whatever initialization they like.
+		// 5.servletBean初始化
+		// 留给子类扩展
 		initServletBean();
 
 		if (logger.isDebugEnabled()) {
@@ -224,6 +239,14 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 		public ServletConfigPropertyValues(ServletConfig config, Set<String> requiredProperties)
 				throws ServletException {
 
+			/**
+			 * 		从代码中的事,封装属性主要是对初始化的参数进行封装的,也就是servlet中配置的<init-param>中配置的封装.当然,用户
+			 * 	可以通过对requiredProperties参数的初始化来强制验证某些属性的必要性,这样,在属性封装的过程中,一旦检测到requiredProperties
+			 * 	中的属性没有指定初始值,就会抛出异常.
+			 * 	
+			 * 	P302
+			 */
+			
 			Set<String> missingProps = (!CollectionUtils.isEmpty(requiredProperties) ?
 					new HashSet<>(requiredProperties) : null);
 

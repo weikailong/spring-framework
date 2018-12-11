@@ -100,6 +100,14 @@ public class ContextLoaderListener extends ContextLoader implements ServletConte
 	 */
 	@Override
 	public void contextInitialized(ServletContextEvent event) {
+		// TODO SpringMVC 分析入口
+		/**
+		 * 		这里涉及了一个常用类WebApplicationContext:在Web应用中,我们会用到WebApplicationContext,WebApplicationContext继承
+		 * 	自ApplicationContext,在ApplicationContext的基础上又追加了一些特定于Web的操作及属性,非常类似于我们通过编程方式使用Spring
+		 * 	时使用的ClassPathXMLApplicationContext类提供的功能.
+		 * 		P297
+		 */
+		// 初始化WebApplicationContext
 		initWebApplicationContext(event.getServletContext());
 	}
 

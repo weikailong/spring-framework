@@ -139,6 +139,11 @@ public class ContextLoader {
 		// This is currently strictly internal and not meant to be customized
 		// by application developers.
 		try {
+			/**
+			 * 		根据此静态代码块的内容,我们推断在当前类的ContextLoader同样目录下必定会存在属性文件ContextLoader.properties,
+			 * 	查看后果然存在,内容如下:
+			 * 		org.springframework.web.context.WebApplicationContext=org.springframework.web.context.support.XmlWebApplicationContext
+			 */
 			ClassPathResource resource = new ClassPathResource(DEFAULT_STRATEGIES_PATH, ContextLoader.class);
 			defaultStrategies = PropertiesLoaderUtils.loadProperties(resource);
 		}
@@ -258,7 +263,26 @@ public class ContextLoader {
 	 * @see #CONFIG_LOCATION_PARAM
 	 */
 	public WebApplicationContext initWebApplicationContext(ServletContext servletContext) {
+
+		/**
+		 * 		initWebApplicationContext函数主要是体现了创建WebApplicationContext实例的一个功能架构,从函数中哦我们看到了初始化
+		 * 	的大致步骤.
+		 * 		(1)	WebApplicationContext存在性的验证.
+		 * 				在配置中只允许声明一次ServletContextListener,多次声明会扰乱Spring的执行逻辑,所以这里首先做的就是
+		 * 			对此验证,在Spring中如果创建WebApplicationContext实例会记录在ServletContext中以方便全局调用,而使用的
+		 * 			key就是	WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE,所以验证的方式就是查看ServletContext
+		 * 			实例中是否有对应key的属性.
+		 * 		
+		 * 		(2)	创建WebApplicationContext实例
+		 * 				如果通过验证,则Spring将创建WebApplicationContext实例的工作委托给了createWebApplicationContext函数.	
+		 * 		(3)	将实例记录在servletContext中
+		 * 		(4)	映射当前的类加载器与创建的实例到全局变量currentContextPerThread中.
+		 * 		
+		 * 	P298	
+		 */
+
 		if (servletContext.getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE) != null) {
+			// web.xml中存在多次ContextLoader定义
 			throw new IllegalStateException(
 					"Cannot initialize context because there is already a root application context present - " +
 					"check whether you have multiple ContextLoader* definitions in your web.xml!");
@@ -275,6 +299,7 @@ public class ContextLoader {
 			// Store context in local instance variable, to guarantee that
 			// it is available on ServletContext shutdown.
 			if (this.context == null) {
+				// 初始化context
 				this.context = createWebApplicationContext(servletContext);
 			}
 			if (this.context instanceof ConfigurableWebApplicationContext) {
@@ -291,6 +316,7 @@ public class ContextLoader {
 					configureAndRefreshWebApplicationContext(cwac, servletContext);
 				}
 			}
+			// 记录在servletContext中
 			servletContext.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE, this.context);
 
 			ClassLoader ccl = Thread.currentThread().getContextClassLoader();
@@ -365,6 +391,13 @@ public class ContextLoader {
 			}
 		}
 		else {
+
+			/**
+			 * 		在初始化的过程中,程序首先会读取ContextLoader类的同目录下的属性文件ContextLoader.properties,并根据其中的
+			 * 	配置提取将要实现WebApplicationContext接口的实现类,并根据这个实现类通过放射的方式进行实例的创建.
+			 * 		P299
+			 */
+
 			contextClassName = defaultStrategies.getProperty(WebApplicationContext.class.getName());
 			try {
 				return ClassUtils.forName(contextClassName, ContextLoader.class.getClassLoader());
