@@ -690,8 +690,35 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * we default to BeanNameUrlHandlerMapping.
 	 */
 	private void initHandlerMappings(ApplicationContext context) {
+
+		/**
+		 * 	(4) 初始化HandlerMappings
+		 * 			当客户端发出Request时DispatcherServlet会将Request提交给HandlerMapping,然后HandlerMapping根据WebApplicationContext
+		 * 		的配置来回传给DispatcherServlet相应的Controller.
+		 * 			在基于SpringMVC的Web应用程序中,我们可以为DispatcherServlet提供多个HandlerMapping供其使用.DispatcherServlet在选用
+		 * 		HandlerMapping的过程中,将根据我们所指定的一系列HandlerMapping的优先级进行排序,然后优先使用优先级在前的HandlerMapping.
+		 * 		如果当前的HandlerMapping能够返回可用的Handler,DispatcherServlet则使用当前返回的Handler进行Web请求处理,而不再继续询问其
+		 * 		它的HandlerMapping.否则,DispatcherServlet将继续按照各个HandlerMapping的优先级进行询问,直到获取一个可用的Handler为止.	
+		 * 	
+		 * 	P312
+		 */
+
 		this.handlerMappings = null;
 
+		/**
+		 * 		默认情况下,SpringMVC将加载当前系统中所有实现了HandlerMapping接口的bean.如果只期望SpringMVC加载指定的handlerMapping时,
+		 * 	可以修改web.xml中的DispatcherServlet的初始参数,将detectAllHandlerMappings的值设置为false:
+		 * 		<init-param>
+		 * 		 	<param-name>detectAllHandlerMappings</param-name>   
+		 * 		 	<param-value>false</param-value>	
+		 * 		</init-param>
+		 * 		此时,SpringMVC将查找名为"handlerMapping"的bean,并作为当前系统统一的handlerMapping.如果没有定义handlerMapping的话,
+		 * 	则SpringMVC将按照org.Springframework.web.servlet.DispatcherServlet所在目录下的DispatcherServlet.properties中所定义的
+		 * 	org.Springframework.web.servlet.HandlerMapping的内容来加载默认的handlerMapping(用户没有自定义Strategies的情况下).
+		 * 	
+		 * 	P312
+		 */
+		
 		if (this.detectAllHandlerMappings) {
 			// Find all HandlerMappings in the ApplicationContext, including ancestor contexts.
 			Map<String, HandlerMapping> matchingBeans =
@@ -728,6 +755,16 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * we default to SimpleControllerHandlerAdapter.
 	 */
 	private void initHandlerAdapters(ApplicationContext context) {
+
+		/**
+		 * 	(4)	初始化HandlerAdapters
+		 * 			从名字也能联想到这是一个车典型的适配器模式的使用,在计算机编程中,适配器模式将一个类的接口适配成用户所期待的.
+		 * 		使用适配器,可以使接口不兼容而无法在一起工作的类协同工作,做法是将类自己的接口包裹在一个已存在的类中.那么在处理
+		 * 		handler时为什么会使用适配器模式呢?我们首先分析它的初始化逻辑.
+		 * 	
+		 * 	P313
+		 */
+
 		this.handlerAdapters = null;
 
 		if (this.detectAllHandlerAdapters) {
