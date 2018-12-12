@@ -917,6 +917,14 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	protected final void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 
+		/**
+		 * 		我们知道在实例的HttpServlet类中分别提供了相应的服务方法,它们是doDelete(),doGet(),doOptions(),doPost(),doPut()和doTrace(),
+		 * 	它会根据请求的不同形式将程序的引导至对应的函数进行处理.这几个函数中最常用的函数无非就是doGet()和doPost(),那么我们就直接查看
+		 * 	DispatcherServlet中对于这两个函数的逻辑实现.
+		 * 	
+		 * 	P321
+		 */
+
 		processRequest(request, response);
 	}
 
@@ -1010,6 +1018,20 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	protected final void processRequest(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 
+		/**
+		 * 		对于不同的方法,Spring并没有做特殊处理,而是统一将程序再一次的引导至processRequest(request,response)中.
+		 * 		
+		 * 		函数中已经开始了对请求的处理,虽然把细节转移到了doService函数中实现,但是我们不难看出处理请求前后做的准备与处理工作
+		 * 			(1)	为了保证当前线程的LocaleContext以及RequestAttributes可以在当前请求后还能恢复,提取当前线程的两个属性.
+		 * 			(2)	根据当前request创建对应的LocaleContext和RequestAttributes,并绑定到当前线程	
+		 * 			(3)	委托给doService方法进一步处理.
+		 * 			(4)	请求处理结束后恢复线程到原始状态.
+		 * 			(5)	请求处理结束后无论成功与否发布事件通知	
+		 * 
+		 * P322
+		 */
+		
+		// 记录当前时间,用于计算web请求的处理时间
 		long startTime = System.currentTimeMillis();
 		Throwable failureCause = null;
 

@@ -347,10 +347,24 @@ public abstract class AbstractHandlerMapping extends WebApplicationObjectSupport
 	@Override
 	@Nullable
 	public final HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
+
+		/**
+		 * 		函数中首先会使用getHandlerInternal方法根据request信息获取对应的Handler,如果以SimpleUrlHandlerMapping为例分析,
+		 * 	那么我们推断此步骤提供的功能很可能就是根据URL找到匹配的Controller并返回,当然如果没有找到对应的Controller处理器那么
+		 * 	程序会尝试去查找配置中的默认处理器,当然,当查找的controller为String类型时,那就意味着返回的是配置的bean名称,需要根据
+		 * 	bean名称查找对应的bean,最后,还要通过getHandlerExecutionChain方法对返回的Handler进行封装,以保证满足返回类型的匹配.
+		 * 	
+		 * 	P328
+		 */
+
+		// 1.根据request查找对应的Handler
+		// 根据request获取对应的handler
 		Object handler = getHandlerInternal(request);
 		if (handler == null) {
+			// 如果没有对应request的handler则使用默认的handler
 			handler = getDefaultHandler();
 		}
+		// 如果也没有提供默认的handler则无法继续处理返回null
 		if (handler == null) {
 			return null;
 		}
@@ -360,6 +374,7 @@ public abstract class AbstractHandlerMapping extends WebApplicationObjectSupport
 			handler = obtainApplicationContext().getBean(handlerName);
 		}
 
+		// 2.加入拦截器到执行链
 		HandlerExecutionChain executionChain = getHandlerExecutionChain(handler, request);
 		if (CorsUtils.isCorsRequest(request)) {
 			CorsConfiguration globalConfig = this.globalCorsConfigSource.getCorsConfiguration(request);
@@ -410,6 +425,13 @@ public abstract class AbstractHandlerMapping extends WebApplicationObjectSupport
 	 * @see #getAdaptedInterceptors()
 	 */
 	protected HandlerExecutionChain getHandlerExecutionChain(Object handler, HttpServletRequest request) {
+
+		/**
+		 * 	getHandlerExecutionChain函数最主要的目的是将配置中的对应配置加入到执行链中,以保证这些拦截器可以有效地作用于目标对象.
+		 * 	
+		 * 	P330
+		 */
+
 		HandlerExecutionChain chain = (handler instanceof HandlerExecutionChain ?
 				(HandlerExecutionChain) handler : new HandlerExecutionChain(handler));
 
