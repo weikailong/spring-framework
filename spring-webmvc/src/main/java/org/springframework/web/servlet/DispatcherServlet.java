@@ -1278,6 +1278,7 @@ public class DispatcherServlet extends FrameworkServlet {
 				}
 
 				// Actually invoke the handler.
+				// 对于逻辑处理其实是通过适配器中转调用Handler并返回视图的.
 				// 真正的激活handler并返回视图
 				mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 
@@ -1352,6 +1353,15 @@ public class DispatcherServlet extends FrameworkServlet {
 			}
 			else {
 				Object handler = (mappedHandler != null ? mappedHandler.getHandler() : null);
+
+				/**
+				 * 		有时候系统运行过程中出现异常,而我们并不希望就此中断对用户的服务,而是至少告知客户当前系统在处理逻辑的过程中
+				 * 	出现了异常,甚至告知他们因为什么原因导致的.Spring中的异常处理机制会帮我们完成这个工作.其实,这里Spring主要的工作
+				 * 	是将逻辑引导至HandlerExceptionResolver类的resolveException方法,而HandlerExceptionResolver的使用,我们在讲解
+				 * 	WebApplicationContext的初始化的时候已经介绍过了.
+				 * 	
+				 * 	P334
+				 */
 				mv = processHandlerException(request, response, handler, exception);
 				errorView = (mv != null);
 			}
@@ -1360,6 +1370,14 @@ public class DispatcherServlet extends FrameworkServlet {
 		// Did the handler return a view to render?
 		// 如果在Handler实例的处理中返回了view,那么需要做页面的处理
 		if (mv != null && !mv.wasCleared()) {
+
+			/**
+			 * 		无论是一个系统还是一个站点,最重要的工作都是与用户进行交互,用户操作系统后无论下发的命令成功与否都需要给用户一
+			 * 	个反馈,以便于用户进行下一步的判断.所以,在逻辑处理的最后一定会涉及一个页面跳转的问题.
+			 * 	
+			 * 	P335
+			 */
+
 			// 处理页面跳转
 			render(mv, request, response);
 			if (errorView) {
@@ -1518,6 +1536,15 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * @throws Exception if preparing the response failed
 	 */
 	protected void noHandlerFound(HttpServletRequest request, HttpServletResponse response) throws Exception {
+
+		/**
+		 * 		每个请求都应该对应着一个Handler,因为每个请求都会在后台有相应的逻辑对应,而逻辑的实现就是在Handler中,所以一旦遇到没有找到
+		 * 	Handler的情况(正常情况下如果没有URL匹配的Handler,开发人员可以设置默认的Handler来处理请求,但是如果默认请求也未设置就会出现Handler
+		 * 	为空的情况),就只能通过response向用户警方正错误信息.
+		 * 	
+		 * 	P331
+		 */
+
 		if (pageNotFoundLogger.isWarnEnabled()) {
 			pageNotFoundLogger.warn("No mapping found for HTTP request with URI [" + getRequestUri(request) +
 					"] in DispatcherServlet with name '" + getServletName() + "'");
@@ -1537,6 +1564,16 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * @throws ServletException if no HandlerAdapter can be found for the handler. This is a fatal error.
 	 */
 	protected HandlerAdapter getHandlerAdapter(Object handler) throws ServletException {
+
+		/**
+		 * 		在WebApplicationContext的初始化过程中我们讨论了HandlerAdapter的初始化,了解了默认情况下普通的Web请求会交给
+		 * 	SimpleControllerHandlerAdapter去处理.下面我们以SimpleControllerHandlerAdapter为例来分析获取适配器的逻辑.
+		 * 		对于获取适配器的逻辑无非就是遍历所有的适配器来选择合适的适配器并返回它,而某个适配器是否适用于当前的Handler逻辑
+		 * 	被封装在具体的适配器中.
+		 * 	
+		 * 	P331
+		 */
+
 		if (this.handlerAdapters != null) {
 			for (HandlerAdapter ha : this.handlerAdapters) {
 				if (logger.isTraceEnabled()) {
@@ -1619,6 +1656,12 @@ public class DispatcherServlet extends FrameworkServlet {
 		String viewName = mv.getViewName();
 		if (viewName != null) {
 			// We need to resolve the view name.
+			/**
+			 * 	1.解析视图名称
+			 * 		在上文中我们提到DispatcherServlet会根据ModelAndView选择合适的视图来进行渲染,而这一功能就是在的resolveViewName
+			 * 	函数中完成的.
+			 * 	P336
+			 */
 			view = resolveViewName(viewName, mv.getModelInternal(), locale, request);
 			if (view == null) {
 				throw new ServletException("Could not resolve view with name '" + mv.getViewName() +
@@ -1642,6 +1685,7 @@ public class DispatcherServlet extends FrameworkServlet {
 			if (mv.getStatus() != null) {
 				response.setStatus(mv.getStatus().value());
 			}
+			// 页面跳转;当通过viewName解析到对应的View后,就可以进一步的处理跳转逻辑了.
 			view.render(mv.getModelInternal(), request, response);
 		}
 		catch (Exception ex) {
@@ -1684,6 +1728,11 @@ public class DispatcherServlet extends FrameworkServlet {
 
 		if (this.viewResolvers != null) {
 			for (ViewResolver viewResolver : this.viewResolvers) {
+				
+				/**
+				 * 	可以以org.Springframework.web.servlet.view.InternalResourceViewResolver为例来分析ViewResolver逻
+				 * 	辑的解析过程.其中resolveViewName函数的实现是在其父类AbstractCachingViewResolver中完成的.
+				 */
 				View view = viewResolver.resolveViewName(viewName, locale);
 				if (view != null) {
 					return view;

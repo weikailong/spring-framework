@@ -146,10 +146,21 @@ public abstract class AbstractCachingViewResolver extends WebApplicationObjectSu
 	@Override
 	@Nullable
 	public View resolveViewName(String viewName, Locale locale) throws Exception {
+
+		/**
+		 * 		对于InternalResourceViewResolver所提供的解析功能主要考虑到了几个方面的处理.
+		 * 			* 基于效率的考虑,提供了缓存的支持.
+		 * 			* 提供了对redirect:xx和forward:xx前缀的支持
+		 * 			* 添加了前缀及后缀,并向View中加入了必须的属性设置
+		 * 		P338
+		 */
+
 		if (!isCache()) {
+			// 不存在缓存的情况下直接创建视图
 			return createView(viewName, locale);
 		}
 		else {
+			// 直接从缓存中提取
 			Object cacheKey = getCacheKey(viewName, locale);
 			View view = this.viewAccessCache.get(cacheKey);
 			if (view == null) {

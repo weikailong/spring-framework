@@ -41,6 +41,14 @@ public class SimpleControllerHandlerAdapter implements HandlerAdapter {
 
 	@Override
 	public boolean supports(Object handler) {
+
+		/**
+		 * 		SimpleControllerHandlerAdapter就是用于处理普通的Web请求的,而且对于SpringMVC来说,我们会把逻辑封装至Controller
+		 * 	的子类中,例如我们之前引导示例UserController就是继承自AbstractController,而AbstractController实现Controller接口.
+		 *
+		 * 	P332
+		 */
+		
 		return (handler instanceof Controller);
 	}
 
@@ -49,6 +57,12 @@ public class SimpleControllerHandlerAdapter implements HandlerAdapter {
 	public ModelAndView handle(HttpServletRequest request, HttpServletResponse response, Object handler)
 			throws Exception {
 
+		/**
+		 * 		回顾引导示例中的UserController,我们的逻辑是写在handleRequestInternal函数中而不畅handleRequest函数,所以我们还需要
+		 * 	进一步分析这期间所包含的处理流程.
+		 * 	
+		 * 	P334
+		 */
 		return ((Controller) handler).handleRequest(request, response);
 	}
 

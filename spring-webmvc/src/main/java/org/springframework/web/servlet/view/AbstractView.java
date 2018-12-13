@@ -309,8 +309,15 @@ public abstract class AbstractView extends WebApplicationObjectSupport implement
 				" and static attributes " + this.staticAttributes);
 		}
 
+		/**
+		 * 		在引导示例中,我们了解到对于ModelAndView的使用,可以将一些属性直接放入其中,然后在页面上直接通过JSTL语法或者原始的
+		 * 	request获取.这是一个很方便也很神器的功能,但是实现却并不复杂,无非是把我们将要用到的属性放入request中,以便在其它地方可
+		 * 	以直接调用,而解析这些属性的工作就是在createMergedOutputModel函数中完成的.
+		 * 	P338
+		 */
 		Map<String, Object> mergedModel = createMergedOutputModel(model, request, response);
 		prepareResponse(request, response);
+		// 处理页面跳转
 		renderMergedOutputModel(mergedModel, getRequestToExpose(request), response);
 	}
 
