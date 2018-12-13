@@ -58,6 +58,10 @@ import org.springframework.lang.Nullable;
 public interface FactoryBean<T> {
 
 	/**
+	 * 	FactoryBean:一旦某个bean实现了此接口,那么通过getBean方法获取bean时其实是获取此类的getObject()返回的实例.
+	 */
+	
+	/**
 	 * Return an instance (possibly shared or independent) of the object
 	 * managed by this factory.
 	 * <p>As with a {@link BeanFactory}, this allows support for both the

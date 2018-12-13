@@ -36,6 +36,10 @@ package org.springframework.beans.factory;
 public interface InitializingBean {
 
 	/**
+	 * 	InitializingBean:实现此接口的bean会在初始化时调用其afterPropertiesSet方法来进行bean的逻辑初始化.
+	 */
+	
+	/**
 	 * Invoked by a BeanFactory after it has set all bean properties supplied
 	 * (and satisfied BeanFactoryAware and ApplicationContextAware).
 	 * <p>This method allows the bean instance to perform initialization only
